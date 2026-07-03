@@ -19,6 +19,13 @@ VoxReader ships two ways from the same codebase:
 - **Original view** — PDFs can be read as rendered pages, not just extracted text.
 - **Everything persists** — books, position, voice, speed and text size are stored in IndexedDB and survive restarts; a service worker precaches the entire app for offline use.
 
+## 📚 Developer documentation
+
+New to the codebase? **[docs/](docs/README.md)** contains a beginner-friendly guide to the
+whole app — architecture, every screen of the UI, the data structures, the playback
+engine, the import pipeline, the Android native layer, and step-by-step recipes for
+extending it.
+
 ## Build / run
 
 **Android APK** — push to the app branch (or run the *Build Android APK* workflow manually); grab the APK from the run's artifacts or the created GitHub Release. Local builds work too if you have the Android SDK:
