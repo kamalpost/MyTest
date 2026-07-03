@@ -2,7 +2,7 @@
 
 import * as db from './db.js';
 import { extractFile, extractPlainText, openPdf, renderPdfPage } from './extract.js';
-import { Player, SPEED_PRESETS, formatTime, formatRemaining } from './player.js';
+import { createPlayer, SPEED_PRESETS, formatTime, formatRemaining } from './player.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -17,7 +17,8 @@ const state = {
   saveTimer: null,
 };
 
-const player = new Player();
+const player = createPlayer();
+const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
 /* ================= boot ================= */
 
@@ -47,6 +48,11 @@ async function boot() {
 }
 
 function registerServiceWorker() {
+  if (IS_NATIVE) {
+    // In the Android app all assets ship inside the APK — no service worker needed.
+    setOfflineStatus('yes — native app');
+    return;
+  }
   if (!('serviceWorker' in navigator)) {
     setOfflineStatus('not supported');
     return;
@@ -490,7 +496,7 @@ function wirePlayerEvents() {
     renderMiniPlayer();
     if (info.error) toast(`Playback stopped: ${info.error === 'synthesis-failed' || info.error === 'not-allowed' ? 'the speech engine refused — tap play again' : info.error}`);
     if (info.finished) { toast('Finished 🎉'); savePosition(); }
-    player._updateMediaSession();
+    player.updateMediaSession();
   });
   player.on('voices', () => {
     renderVoiceList();
@@ -691,14 +697,7 @@ function renderVoiceList() {
 }
 
 function previewVoice(v) {
-  try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance('This is how I sound.');
-    u.voice = v;
-    u.lang = v.lang;
-    u.rate = player.rate;
-    speechSynthesis.speak(u);
-  } catch { /* preview is best-effort */ }
+  player.preview(v);
 }
 
 function languageName(code) {
@@ -803,3 +802,6 @@ function escapeHtml(s) {
 }
 
 boot();
+
+// test/debug handle (also handy in devtools)
+window.__vox = { player, state };

@@ -1,0 +1,8 @@
+{
+  "appId": "app.voxreader",
+  "appName": "VoxReader",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}

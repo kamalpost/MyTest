@@ -1,0 +1,20 @@
+{
+  "name": "voxreader",
+  "version": "1.0.0",
+  "description": "Listen to PDF and Word books — offline Android app / PWA",
+  "private": true,
+  "scripts": {
+    "sync": "cap sync android",
+    "build:apk": "cd android && ./gradlew assembleRelease",
+    "test": "node test/make-fixtures.js test && node test/e2e.js && node test/e2e-native.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0",
+    "pdf-lib": "^1.17.1"
+  }
+}

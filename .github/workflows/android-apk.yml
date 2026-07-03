@@ -1,0 +1,55 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/pdf-word-book-reader-sqqj3w, main]
+    paths: ['www/**', 'android/**', 'capacitor.config.json', 'package.json', '.github/workflows/android-apk.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Capacitor and sync web assets
+        run: |
+          npm install
+          npx cap sync android
+
+      - name: Build release APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk VoxReader-v1.0.0.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxReader-apk
+          path: VoxReader-v1.0.0.apk
+
+      - name: Publish APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="apk-v1.0.0-build${{ github.run_number }}"
+          gh release create "$TAG" VoxReader-v1.0.0.apk \
+            --title "VoxReader APK (build ${{ github.run_number }})" \
+            --notes "Sideloadable Android APK built from ${{ github.sha }}. Download VoxReader-v1.0.0.apk on your phone, open it, and allow installing from unknown sources when prompted." \
+            --target "${{ github.sha }}"
