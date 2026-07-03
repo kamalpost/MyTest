@@ -36,20 +36,20 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk VoxReader-v1.1.1.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk VoxReader-v1.1.2.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: VoxReader-apk
-          path: VoxReader-v1.1.1.apk
+          path: VoxReader-v1.1.2.apk
 
       - name: Publish APK to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="apk-v1.1.1-build${{ github.run_number }}"
-          gh release create "$TAG" VoxReader-v1.1.1.apk \
-            --title "VoxReader v1.1.1 APK (build ${{ github.run_number }})" \
-            --notes "Sideloadable Android APK built from ${{ github.sha }}. Download VoxReader-v1.1.1.apk on your phone, open it, and allow installing from unknown sources when prompted." \
+          TAG="apk-v1.1.2-build${{ github.run_number }}"
+          gh release create "$TAG" VoxReader-v1.1.2.apk \
+            --title "VoxReader v1.1.2 APK (build ${{ github.run_number }})" \
+            --notes "Sideloadable Android APK built from ${{ github.sha }}. Download VoxReader-v1.1.2.apk on your phone, open it, and allow installing from unknown sources when prompted." \
             --target "${{ github.sha }}"

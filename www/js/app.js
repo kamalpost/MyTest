@@ -1,13 +1,13 @@
 /* VoxReader — main UI controller */
 
 import * as db from './db.js';
-import { extractFile, extractPlainText, openPdf, renderPdfPage } from './extract.js';
+import { extractFile, extractPlainText, openPdf, renderPdfPage, assessTextQuality } from './extract.js';
 import { createPlayer, SPEED_PRESETS, formatTime, formatRemaining } from './player.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.1.2';
 const state = {
   books: [],            // light book records for lists
   currentBookId: null,  // book loaded in the player
@@ -326,6 +326,14 @@ async function openReader(id) {
   $('#view-reader').classList.remove('hidden');
   $('#reader-title-chip').textContent = book.title + (book.author && book.author !== book.title ? ' · ' + book.author : '');
 
+  // Books imported before v1.1.1 have no corruption flag — compute it once now,
+  // so legacy glyph-encoded PDFs already in the library get the pages-view fallback.
+  if (book.textCorrupted === undefined) {
+    book.textCorrupted = assessTextQuality(book.sentences.map((s) => s.t).join(' ')).corrupted;
+    db.updateBook(id, { textCorrupted: book.textCorrupted });
+  }
+  updateReaderWarning(book);
+
   if (state.currentBookId !== id) {
     state.currentBookId = id;
     player.load(book, book.cursor || 0);
@@ -354,19 +362,20 @@ function closeReader() {
   renderLibrary();
 }
 
+/** Persistent warning strip below the title — visible at any reading position. */
+function updateReaderWarning(book) {
+  const el = $('#reader-warning');
+  if (!book.textCorrupted) { el.classList.add('hidden'); return; }
+  el.textContent = '⚠ Legacy (non-Unicode) font — text & read-aloud are garbled. '
+    + (book.type === 'pdf' && book.file
+      ? 'Showing the original pages (📃 toggles views). To listen, import a Unicode version.'
+      : 'To listen, import a Unicode version of this book.');
+  el.classList.remove('hidden');
+}
+
 function renderReaderText(book) {
   const art = $('#reader-text');
   art.innerHTML = '';
-  if (book.textCorrupted) {
-    const warn = document.createElement('div');
-    warn.className = 'corrupt-note';
-    warn.textContent = '⚠ This document stores its text in a legacy (non-Unicode) font, so the extracted '
-      + 'text and read-aloud will be garbled. '
-      + (book.type === 'pdf' && book.file
-        ? 'Use the 📃 button to read the original pages. To listen, import a Unicode version of this book.'
-        : 'To listen, import a Unicode version of this book.');
-    art.appendChild(warn);
-  }
   let lastPage = 0;
   // group sentences by block so paragraphs stay intact
   const frag = document.createDocumentFragment();

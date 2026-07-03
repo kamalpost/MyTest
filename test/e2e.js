@@ -283,25 +283,34 @@ function check(name, cond, extra) {
   check('glyph-encoded junk detected as corrupted', q.g.corrupted === true, `ratio=${q.g.suspiciousRatio.toFixed(2)}`);
   check('clean Unicode Tamil not flagged', q.c.corrupted === false, `ratio=${q.c.suspiciousRatio.toFixed(2)}`);
 
-  // a corrupted PDF must open in the original-pages view with a warning banner
+  // a glyph-encoded book imported by an OLD app version (no textCorrupted flag,
+  // garbled stored sentences) must be auto-flagged on open and fall back to pages view
   const cloneId = await page.evaluate(async (id) => {
     const db = await import('./js/db.js');
     const full = await db.getBook(id);
-    const clone = { ...full, id: 'bk_corrupt_test', title: 'Corrupt Fixture', textCorrupted: true, cursor: 0 };
+    const garbled = 'ொகாZP|<க pPயா^ கzகால¢ அவைன cBக8ய ேப|r ஒ|வைரயா| Dz`தா~க கP`^` எ¢றா¢';
+    const sentences = [];
+    for (let k = 0; k < 12; k++) sentences.push({ t: garbled, b: 0, p: 1, w: 12 });
+    const clone = { ...full, id: 'bk_corrupt_test', title: 'Corrupt Fixture', sentences, sentenceCount: sentences.length, cursor: 0 };
+    delete clone.textCorrupted; // simulates a pre-v1.1.1 import
     await db.putBook(clone);
     return clone.id;
   }, tbook.id);
   await page.evaluate((id) => window.__vox.openReader(id), cloneId);
   await page.waitForTimeout(900);
+  const migrated = await page.evaluate(async () => (await import('./js/db.js')).getBook('bk_corrupt_test').then((b) => b.textCorrupted));
+  check('legacy import auto-flagged as corrupted on open (migration)', migrated === true, String(migrated));
   check('corrupted PDF opens in original page view', await page.isVisible('#reader-original'));
   check('original pages render for corrupted PDF', (await page.locator('#reader-original .pdf-page').count()) >= 1);
+  check('persistent warning strip shown', await page.isVisible('#reader-warning'));
   await page.click('#reader-view-toggle');
   await page.waitForTimeout(200);
-  check('corruption warning banner shown in text view', await page.isVisible('.corrupt-note'));
+  check('warning strip still visible in text view', await page.isVisible('#reader-warning'));
   await page.screenshot({ path: path.join(SHOTS, '11-corrupt-fallback.png') });
   await page.evaluate(async (id) => { const db = await import('./js/db.js'); await db.deleteBook(id); }, cloneId);
   await page.evaluate((id) => window.__vox.openReader(id), tbook.id);
   await page.waitForTimeout(400);
+  check('warning strip hidden for clean book', await page.locator('#reader-warning').isHidden());
 
   console.log('\n— 8. Library, mini player, home —');
   await page.click('#reader-close');
