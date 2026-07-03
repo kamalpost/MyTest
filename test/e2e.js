@@ -153,7 +153,7 @@ function check(name, cond, extra) {
   check('speed button label updated', (await page.textContent('#ctl-speed')).trim() === '2.0');
   const totalAfter = await page.textContent('#time-total');
   check('total time halves at 2×', totalAfter !== totalBefore, `${totalBefore} → ${totalAfter}`);
-  await page.click('#sheet-backdrop');
+  await page.click('#sheet-backdrop', { position: { x: 10, y: 10 } });
 
   console.log('\n— 4. Voice picker —');
   await page.click('#ctl-voice');
@@ -163,7 +163,7 @@ function check(name, cond, extra) {
   await page.locator('.voice-item', { hasText: 'Noah' }).click();
   await page.waitForTimeout(200);
   check('voice selectable', await page.locator('.voice-item.selected', { hasText: 'Noah' }).isVisible());
-  await page.click('#sheet-backdrop');
+  await page.click('#sheet-backdrop', { position: { x: 10, y: 10 } });
   await page.click('#ctl-play'); // resume with the new voice
   await page.waitForTimeout(600);
   const lastVoice = await page.evaluate(() => window.__spoken[window.__spoken.length - 1].voice);
@@ -251,17 +251,66 @@ function check(name, cond, extra) {
   await page.waitForSelector('#sheet-voice:not(.hidden)');
   const firstGroup = await page.locator('.voice-lang').first().textContent();
   check('voice sheet lists Hindi group first for a Hindi book', /hindi|हिन्दी|hi/i.test(firstGroup), firstGroup);
-  await page.click('#sheet-backdrop');
+  await page.click('#sheet-backdrop', { position: { x: 10, y: 10 } });
   await page.screenshot({ path: path.join(SHOTS, '10-hindi-reader.png') });
+
+  console.log('\n— 7c. Unicode Tamil PDF (CMap decode) + glyph-corruption handling —');
+  await page.click('#reader-close');
+  await page.setInputFiles('#file-input', path.join(FIX_DIR, 'fixture-tamil.pdf'));
+  await page.waitForSelector('#view-reader:not(.hidden)', { timeout: 15000 });
+  await page.waitForTimeout(500);
+  const ttext = await page.textContent('#reader-text');
+  // visual-order repair must yield logical Tamil: பொன் (two-part ொ) and கரை (reordered ை)
+  check('Tamil PDF text extracted in logical order',
+    ttext.includes('பொன்') && ttext.includes('கரை') && ttext.includes('தெளிவாக') && ttext.includes('வானம்'),
+    ttext.slice(0, 80));
+  check('reader title from Tamil PDF metadata', (await page.textContent('#reader-title-chip')).includes('பொன்னி'));
+  const tbook = await page.evaluate(() => ({
+    id: window.__vox.player.book.id,
+    lang: window.__vox.player.book.lang,
+    corrupted: window.__vox.player.book.textCorrupted,
+  }));
+  check('Tamil language detected from PDF', tbook.lang === 'ta', tbook.lang);
+  check('clean Unicode PDF not flagged as corrupted', tbook.corrupted === false);
+  check('clean PDF opens in text view', await page.isVisible('#reader-text'));
+
+  const q = await page.evaluate(async () => {
+    const { assessTextQuality } = await import('./js/extract.js');
+    const garbled = ('ொகாZP|<க pPயா^! எ¢றா¢. கzகால¢ அவைன உ ேநா<8 பா~பா நா¢ தா¢ ொசா¢ேனன? எ¢ அ|ைம ேதாழ~களா8ய cBக q¢ ேப|r ஒ|வைரயா| வ~ கP ¢ Rr bைல<: ').repeat(4);
+    const clean = ('பொன்னியின் செல்வன் ஒரு சிறந்த வரலாற்று நாவல். கல்கி எழுதிய இந்த நூல் தமிழ் இலக்கியத்தில் முக்கியமான படைப்பு ஆகும். வந்தியத்தேவன் காவிரி ஆற்றின் கரையில் பயணம் செய்தான். ').repeat(4);
+    return { g: assessTextQuality(garbled), c: assessTextQuality(clean) };
+  });
+  check('glyph-encoded junk detected as corrupted', q.g.corrupted === true, `ratio=${q.g.suspiciousRatio.toFixed(2)}`);
+  check('clean Unicode Tamil not flagged', q.c.corrupted === false, `ratio=${q.c.suspiciousRatio.toFixed(2)}`);
+
+  // a corrupted PDF must open in the original-pages view with a warning banner
+  const cloneId = await page.evaluate(async (id) => {
+    const db = await import('./js/db.js');
+    const full = await db.getBook(id);
+    const clone = { ...full, id: 'bk_corrupt_test', title: 'Corrupt Fixture', textCorrupted: true, cursor: 0 };
+    await db.putBook(clone);
+    return clone.id;
+  }, tbook.id);
+  await page.evaluate((id) => window.__vox.openReader(id), cloneId);
+  await page.waitForTimeout(900);
+  check('corrupted PDF opens in original page view', await page.isVisible('#reader-original'));
+  check('original pages render for corrupted PDF', (await page.locator('#reader-original .pdf-page').count()) >= 1);
+  await page.click('#reader-view-toggle');
+  await page.waitForTimeout(200);
+  check('corruption warning banner shown in text view', await page.isVisible('.corrupt-note'));
+  await page.screenshot({ path: path.join(SHOTS, '11-corrupt-fallback.png') });
+  await page.evaluate(async (id) => { const db = await import('./js/db.js'); await db.deleteBook(id); }, cloneId);
+  await page.evaluate((id) => window.__vox.openReader(id), tbook.id);
+  await page.waitForTimeout(400);
 
   console.log('\n— 8. Library, mini player, home —');
   await page.click('#reader-close');
   check('mini player appears after closing reader', await page.isVisible('#mini-player'));
   const miniTitle = await page.textContent('#mini-title');
-  check('mini player shows current book', miniTitle.includes('हिंदी'), miniTitle);
+  check('mini player shows current book', miniTitle.includes('பொன்னி'), miniTitle);
   await page.click('[data-nav="library"]');
   await page.waitForTimeout(300);
-  check('library lists 4 books', (await page.locator('.library-item').count()) === 4);
+  check('library lists 5 books', (await page.locator('.library-item').count()) === 5);
   check('library shows book language', (await page.textContent('#library-list')).toLowerCase().includes('hindi'));
   check('remaining-time estimates shown', (await page.textContent('#library-list')).includes('remaining') || (await page.textContent('#library-list')).includes('less than a minute'));
   await page.fill('#library-search', 'meditations');
@@ -271,13 +320,13 @@ function check(name, cond, extra) {
   await page.screenshot({ path: path.join(SHOTS, '06-library.png') });
   await page.click('[data-nav="home"]');
   await page.waitForTimeout(300);
-  check('continue-listening row populated', (await page.locator('#continue-row .book-card').count()) === 4);
+  check('continue-listening row populated', (await page.locator('#continue-row .book-card').count()) === 5);
   await page.screenshot({ path: path.join(SHOTS, '07-home-books.png') });
 
   console.log('\n— 9. Persistence across reload —');
   await page.reload();
   await page.waitForTimeout(900);
-  check('books survive reload', (await page.locator('#continue-row .book-card').count()) === 4);
+  check('books survive reload', (await page.locator('#continue-row .book-card').count()) === 5);
   const speedVal = await page.evaluate(async () => {
     const mod = await import('./js/db.js');
     return mod.getSetting('rate', 1);
@@ -288,8 +337,8 @@ function check(name, cond, extra) {
   const voiceMapVal = await page.evaluate(async () => (await import('./js/db.js')).getSetting('voiceMap', {}));
   check('per-language voice map persisted', voiceMapVal && voiceMapVal.en === 'stub-en-US-2', JSON.stringify(voiceMapVal));
   // resume position: open the PDF book again — cursor should be > 0
-  // (order by lastOpenedAt: hindi, docx, pdf, sample → pdf is 3rd)
-  await page.click('#continue-row .book-card:nth-child(3)');
+  // (order by lastOpenedAt: tamil, hindi, docx, pdf, sample → pdf is 4th)
+  await page.click('#continue-row .book-card:nth-child(4)');
   await page.waitForSelector('#view-reader:not(.hidden)');
   await page.waitForTimeout(400);
   const resumedIdx = await page.evaluate(() => Number(document.querySelector('#reader-text span.active')?.dataset.si));
@@ -299,7 +348,7 @@ function check(name, cond, extra) {
   console.log('\n— 10. Profile / settings —');
   await page.click('[data-nav="profile"]');
   await page.waitForTimeout(400);
-  check('book count shown', (await page.textContent('#setting-book-count')).trim() === '4');
+  check('book count shown', (await page.textContent('#setting-book-count')).trim() === '5');
   check('storage usage shown', /(KB|MB|GB)/.test(await page.textContent('#setting-storage')));
   check('speed shown in settings', (await page.textContent('#setting-speed-value')).includes('2'));
   // reminders toggle triggers Notification permission (granted in this context)
@@ -326,7 +375,7 @@ function check(name, cond, extra) {
   await page.click('[data-nav="home"]');
   await page.waitForTimeout(300);
   check('home renders offline', await page.isVisible('#view-home'));
-  check('books available offline', (await page.locator('#continue-row .book-card').count()) === 4);
+  check('books available offline', (await page.locator('#continue-row .book-card').count()) === 5);
   await page.click('#continue-row .book-card:nth-child(1)');
   await page.waitForSelector('#view-reader:not(.hidden)', { timeout: 5000 });
   await page.click('#ctl-play');
@@ -345,7 +394,7 @@ function check(name, cond, extra) {
   await page.waitForSelector('#sheet-book:not(.hidden)');
   await page.click('#book-sheet-delete');
   await page.waitForTimeout(500);
-  check('book deleted from library', (await page.locator('.library-item').count()) === 3);
+  check('book deleted from library', (await page.locator('.library-item').count()) === 4);
 
   console.log('\n— console errors —');
   const realErrors = errors.filter((e) => !e.includes('favicon') && !e.includes('net::ERR_INTERNET_DISCONNECTED') && !e.includes('Failed to load resource'));

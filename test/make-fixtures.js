@@ -131,4 +131,22 @@ ${p('The final paragraph brings the word count up and lets the reader estimate a
   console.log('wrote fixture.docx');
 }
 
-makePdf().then(makeDocx);
+/* ---------- Tamil PDF (real-world style: Chromium print-to-PDF, subsetted
+   Unicode font + ToUnicode CMaps — same structure as a Google Docs export).
+   Requires a Tamil font on the system (fonts-noto-core). ---------- */
+async function makeTamilPdf() {
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium' });
+  const page = await browser.newPage();
+  await page.setContent(`<!doctype html><meta charset="utf-8"><title>பொன்னி நதிக்கரை</title>
+    <style>body{font-family:'Noto Sans Tamil','Noto Serif Tamil',sans-serif;font-size:16px;line-height:1.9;margin:40px}</style>
+    <h1>பொன்னி நதிக்கரை</h1>
+    <p>ஆடித் திருநாளன்று காவிரி நதிக்கரையில் மக்கள் கூட்டம் அலைமோதியது. வானம் தெளிவாக இருந்தது. நதியின் நீர் நிறைந்து ஓடியது.</p>
+    <p>வந்தியத்தேவன் குதிரை மீது பயணம் செய்தான். அவன் மனதில் பல எண்ணங்கள் ஓடின. கடம்பூர் மாளிகையை நோக்கி விரைந்தான்.</p>`);
+  const pdf = await page.pdf({ format: 'A4' });
+  fs.writeFileSync(path.join(OUT, 'fixture-tamil.pdf'), pdf);
+  await browser.close();
+  console.log('wrote fixture-tamil.pdf');
+}
+
+makePdf().then(makeDocx).then(makeTamilPdf);

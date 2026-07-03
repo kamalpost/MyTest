@@ -13,6 +13,15 @@ import * as pdfjsLib from '../vendor/pdf.min.mjs';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('../vendor/pdf.worker.min.mjs', import.meta.url).toString();
 
+/* CMap + standard-font data let pdf.js decode fonts with predefined/composite
+   encodings (common in Indic and CJK PDFs). Without these, such PDFs extract
+   as junk characters even though they display fine in other viewers. */
+const PDF_OPEN_OPTS = {
+  cMapUrl: new URL('../vendor/cmaps/', import.meta.url).toString(),
+  cMapPacked: true,
+  standardFontDataUrl: new URL('../vendor/standard_fonts/', import.meta.url).toString(),
+};
+
 const MAX_SENTENCE_CHARS = 280; // keep utterances short so TTS engines never truncate
 
 export function countWords(text) {
@@ -100,15 +109,113 @@ function blocksLanguage(blocks) {
   return detectLanguage(blocks.map((b) => b.text).join(' '));
 }
 
-function titleFromFilename(name) {
-  return name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim() || name;
+/* ---------------- extraction quality check ----------------
+   Many older Tamil/Hindi PDFs use legacy glyph-encoded fonts (TSCII, Bamini,
+   Krutidev, …): the page LOOKS right because the embedded font paints the right
+   shapes, but the underlying character codes are not Unicode, so extraction
+   yields garbage like "ொகாZP|<க pPயா^!". Two reliable symptoms:
+     1. Latin letters mixed INSIDE a word that contains Indic characters.
+     2. Indic combining marks (vowel signs etc.) with no Indic base letter
+        before them — impossible in real text.
+   If a large share of Indic words show these symptoms, the source is flagged
+   as glyph-encoded so the UI can fall back to the original page view. */
+
+const INDIC_CHAR = /[ऀ-෿]/;
+
+export function assessTextQuality(text) {
+  const tokens = (text.match(/\S+/g) || []).slice(0, 3000);
+  let indicTokens = 0;
+  let suspicious = 0;
+  for (const tok of tokens) {
+    if (!INDIC_CHAR.test(tok)) continue;
+    indicTokens++;
+    let bad = /[A-Za-z]/.test(tok); // Latin glyph codes inside an Indic word
+    if (!bad) {
+      const chars = [...tok];
+      for (let i = 0; i < chars.length; i++) {
+        const c = chars[i];
+        if (INDIC_CHAR.test(c) && /\p{M}/u.test(c)) {
+          const prev = i > 0 ? chars[i - 1] : null;
+          const validBase = prev && INDIC_CHAR.test(prev) && /[\p{L}\p{M}]/u.test(prev);
+          if (!validBase) { bad = true; break; }
+        }
+      }
+    }
+    if (bad) suspicious++;
+  }
+  const suspiciousRatio = indicTokens ? suspicious / indicTokens : 0;
+  return {
+    indicTokens,
+    suspiciousRatio,
+    corrupted: indicTokens >= 20 && suspiciousRatio > 0.3,
+  };
+}
+
+function blocksCorrupted(blocks) {
+  return assessTextQuality(blocks.map((b) => b.text).join(' ')).corrupted;
+}
+
+/* ---------------- visual-order repair for Indic PDFs ----------------
+   Many PDF producers (including Chromium's print-to-PDF) write Indic text in
+   VISUAL order — the order glyphs are painted — rather than logical Unicode
+   order. Pre-base vowel signs (Tamil ெ ே ை, Devanagari ி) are drawn to the
+   LEFT of their consonant, so extraction yields e.g. "ெபான்" for "பொன்" and
+   the two-part vowel ொ comes out as ெ…ா around the consonant. Readers like
+   Google reorder this internally; we do the same:
+     - a document is "visual order" if pre-base marks appear at word starts
+       (impossible in logical text),
+     - in that mode every pre-base mark is re-attached AFTER its following
+       consonant, and split two-part vowels are recombined (ெ+ா→ொ, ே+ா→ோ,
+       ெ+ௗ→ௌ). */
+
+const PRE_BASE_MARK = /[\u0BC6-\u0BC8\u093F]/; // Tamil e/E/ai signs, Devanagari i sign
+const TWO_PART_VOWEL = {
+  '\u0BC6\u0BBE': '\u0BCA', // Tamil o
+  '\u0BC7\u0BBE': '\u0BCB', // Tamil oo
+  '\u0BC6\u0BD7': '\u0BCC', // Tamil au
+};
+
+export function needsVisualOrderFix(text) {
+  const wordInitialMarks = text.match(/(?:^|\s)[\u0BC6-\u0BC8\u093F]/g);
+  return !!wordInitialMarks && wordInitialMarks.length >= 2;
+}
+
+export function fixVisualOrder(text) {
+  const chars = [...text];
+  const out = [];
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    if (PRE_BASE_MARK.test(c)) {
+      let j = i + 1;
+      while (j < chars.length && chars[j] === ' ') j++;
+      const cons = chars[j];
+      if (cons && INDIC_CHAR.test(cons) && /\p{L}/u.test(cons)) {
+        let k = j + 1;
+        while (k < chars.length && chars[k] === ' ') k++;
+        const combined = TWO_PART_VOWEL[c + (chars[k] || '')];
+        if (combined) { out.push(cons, combined); i = k; }
+        else { out.push(cons, c); i = j; }
+        continue;
+      }
+    }
+    out.push(c);
+  }
+  return out.join('');
+}
+
+/** Clean one extracted PDF text run: drop control chars from unmapped glyphs
+    and spaces wrongly inserted before combining marks. */
+function cleanExtractedRun(text) {
+  return text
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFD]/g, '')
+    .replace(/[ \t]+(?=\p{M})/gu, '');
 }
 
 /* ---------------- PDF ---------------- */
 
 export async function extractPdf(file, onProgress) {
   const data = await file.arrayBuffer();
-  const loadingTask = pdfjsLib.getDocument({ data });
+  const loadingTask = pdfjsLib.getDocument({ data, ...PDF_OPEN_OPTS });
   const doc = await loadingTask.promise;
   const blocks = [];
   let meta = { title: '', author: '' };
@@ -125,7 +232,7 @@ export async function extractPdf(file, onProgress) {
     let lastY = null;
     let lastHeight = 0;
     const flush = () => {
-      const text = para.replace(/\s+/g, ' ').trim();
+      const text = cleanExtractedRun(para.replace(/\s+/g, ' ')).trim();
       if (text) blocks.push({ tag: 'p', text, page: p });
       para = '';
     };
@@ -150,6 +257,11 @@ export async function extractPdf(file, onProgress) {
     if (onProgress) onProgress(p, doc.numPages);
   }
 
+  // Decide once per document whether text came out in visual order, then repair.
+  if (needsVisualOrderFix(blocks.map((b) => b.text).join(' '))) {
+    for (const b of blocks) b.text = fixVisualOrder(b.text);
+  }
+
   const cover = await renderPdfCover(doc);
   const title = meta.title || titleFromFilename(file.name);
   const sentences = buildSentences(blocks);
@@ -158,6 +270,7 @@ export async function extractPdf(file, onProgress) {
     author: meta.author || 'PDF document',
     type: 'pdf',
     lang: blocksLanguage(blocks),
+    textCorrupted: blocksCorrupted(blocks),
     pages: doc.numPages,
     blocks,
     sentences,
@@ -205,7 +318,7 @@ export async function renderPdfPage(doc, pageNum, targetWidth) {
 
 export async function openPdf(fileBlob) {
   const data = await fileBlob.arrayBuffer();
-  return pdfjsLib.getDocument({ data }).promise;
+  return pdfjsLib.getDocument({ data, ...PDF_OPEN_OPTS }).promise;
 }
 
 /* ---------------- DOCX ---------------- */
@@ -246,6 +359,7 @@ export async function extractDocx(file) {
     author: 'Word document',
     type: 'docx',
     lang: blocksLanguage(blocks),
+    textCorrupted: blocksCorrupted(blocks),
     pages: 1,
     blocks,
     sentences,
@@ -269,6 +383,7 @@ export function extractPlainText(title, text, type = 'text') {
     author: type === 'txt' ? 'Text file' : 'Pasted text',
     type,
     lang: blocksLanguage(blocks),
+    textCorrupted: blocksCorrupted(blocks),
     pages: 1,
     blocks,
     sentences,

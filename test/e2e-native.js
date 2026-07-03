@@ -83,7 +83,7 @@ function check(name, cond, extra) {
  await page.waitForTimeout(150);
  const calls1 = await page.evaluate(() => window.__native.calls.filter(c => c[0]==='configure' || c[0]==='preview'));
  check('voice select configures + previews natively', calls1.some(c => c[0]==='configure' && c[1].voice === 'en-gb-x-b#male-local') && calls1.some(c => c[0]==='preview'));
- await page.click('#sheet-backdrop');
+ await page.click('#sheet-backdrop', { position: { x: 10, y: 10 } });
 
  console.log('\n— native playback —');
  await page.click('#ctl-play');

@@ -7,7 +7,7 @@ import { createPlayer, SPEED_PRESETS, formatTime, formatRemaining } from './play
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 const state = {
   books: [],            // light book records for lists
   currentBookId: null,  // book loaded in the player
@@ -235,7 +235,9 @@ async function importFile(file) {
     });
     const book = await saveExtracted(extracted, file);
     hideImport();
-    toast(`Added “${book.title}”`);
+    toast(book.textCorrupted
+      ? '⚠ This file uses a legacy non-Unicode font — showing original pages; read-aloud may be garbled'
+      : `Added “${book.title}”`);
     openReader(book.id);
   } catch (err) {
     hideImport();
@@ -329,7 +331,8 @@ async function openReader(id) {
     player.load(book, book.cursor || 0);
     renderReaderText(book);
     state.pdfDoc = null;
-    state.readerView = 'text';
+    // Glyph-encoded (non-Unicode) PDFs extract as garbage — open the real pages instead.
+    state.readerView = book.textCorrupted && book.type === 'pdf' && book.file ? 'original' : 'text';
     $('#reader-view-toggle').classList.toggle('hidden', book.type !== 'pdf' || !book.file);
     applyReaderView();
   }
@@ -354,6 +357,16 @@ function closeReader() {
 function renderReaderText(book) {
   const art = $('#reader-text');
   art.innerHTML = '';
+  if (book.textCorrupted) {
+    const warn = document.createElement('div');
+    warn.className = 'corrupt-note';
+    warn.textContent = '⚠ This document stores its text in a legacy (non-Unicode) font, so the extracted '
+      + 'text and read-aloud will be garbled. '
+      + (book.type === 'pdf' && book.file
+        ? 'Use the 📃 button to read the original pages. To listen, import a Unicode version of this book.'
+        : 'To listen, import a Unicode version of this book.');
+    art.appendChild(warn);
+  }
   let lastPage = 0;
   // group sentences by block so paragraphs stay intact
   const frag = document.createDocumentFragment();
@@ -818,4 +831,4 @@ function escapeHtml(s) {
 boot();
 
 // test/debug handle (also handy in devtools)
-window.__vox = { player, state };
+window.__vox = { player, state, openReader };

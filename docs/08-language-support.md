@@ -76,13 +76,35 @@ tap-to-preview. In the browser/PWA the voice list instead comes from the OS/brow
 ## About the source documents
 
 - **Word/.docx and pasted text**: Unicode Indic text just works.
-- **PDFs**: quality depends on how the PDF was made. Text-based PDFs with proper Unicode
-  encoding extract fine. Two known problem classes:
+- **PDFs**: quality depends on how the PDF was made. The extractor applies three layers
+  of repair (v1.1.1) before giving up:
+  1. **CMap decoding** — `www/vendor/cmaps/` + `standard_fonts/` are passed to pdf.js
+     (`PDF_OPEN_OPTS` in `extract.js`) so fonts with predefined/composite encodings
+     decode correctly instead of producing junk.
+  2. **Visual-order repair** (`fixVisualOrder`) — many producers (including Chromium and
+     some Word exporters) write Indic text in *visual* order: pre-base vowel signs
+     (Tamil ெ ே ை, Devanagari ி) come **before** their consonant, and two-part vowels
+     like ொ arrive split as ெ…ா around it. The extractor detects this (pre-base marks
+     at word starts are impossible in logical text) and reorders/recombines, turning
+     "ெபான்" back into "பொன்".
+  3. **Junk stripping** — control characters from glyphs with no Unicode mapping and
+     spaces wrongly inserted before combining marks are removed.
+
+  Two problem classes remain genuinely unfixable at read time:
   - *Scanned/image PDFs* have no text at all → nothing to read (an OCR step would be a
     big but valuable future enhancement).
-  - *Legacy glyph-encoded PDFs* (old Tamil/Hindi fonts like TSCII or Krutidev that fake
-    the script with custom glyph codes) extract as garbage — that's a property of the
-    file, not fixable at read time. Re-exporting the document with Unicode fonts fixes it.
+  - *Legacy glyph-encoded PDFs* (old Tamil/Hindi fonts like TSCII, Bamini or Krutidev
+    that fake the script with custom Latin glyph codes) extract as garbage. VoxReader
+    detects this (`assessTextQuality`: Latin letters inside Indic words, orphaned
+    combining marks) and automatically opens such books in the **original pages view**
+    with a warning banner — readable by eye, but for listening you need a Unicode
+    version of the book.
+
+  **Quick way to tell which case a PDF is:** open it in any PDF viewer on a computer,
+  select some text, copy, and paste into a plain-text editor. Clean paste → Unicode
+  (VoxReader reads it). Junk paste → glyph-encoded (only the pages view can show it;
+  note that Google Docs shows such PDFs "correctly" because it silently runs OCR on
+  import — that doesn't mean the PDF's text layer is good).
 
 ## Limitations & future work
 
