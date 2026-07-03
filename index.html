@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="Listen to your PDF and Word books. Offline, private, with natural voices and speed control." />
+  <title>VoxReader — Listen to any book</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ============ HOME ============ -->
+    <main id="view-home" class="view" data-view="home">
+      <section class="promo card-gradient" id="promo-card">
+        <div class="promo-text">
+          <h2>Unlock faster speeds and get more done in less time</h2>
+          <button class="btn-pill" id="promo-try">Try 2×</button>
+        </div>
+        <div class="promo-bars" aria-hidden="true">
+          <div class="bar b1"><span>2.1×</span></div>
+          <div class="bar b2"><span>3×</span></div>
+          <div class="bar b3"><span>4×</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Continue Listening</h2>
+        <div id="continue-row" class="book-row" role="list"></div>
+        <p id="continue-empty" class="empty-hint hidden">Books you import will show up here. Tap <strong>Files</strong> below to add your first one.</p>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Import &amp; Listen</h2>
+        <div class="import-grid">
+          <button class="import-tile" id="tile-files">
+            <span class="tile-icon">📄</span>
+            <span>Files</span>
+          </button>
+          <button class="import-tile" id="tile-word">
+            <span class="tile-icon">📝</span>
+            <span>Word</span>
+          </button>
+          <button class="import-tile" id="tile-text">
+            <span class="tile-icon">🔤</span>
+            <span>Text</span>
+          </button>
+          <button class="import-tile" id="tile-sample">
+            <span class="tile-icon">✨</span>
+            <span>Sample</span>
+          </button>
+        </div>
+        <p class="import-hint">PDF · Word (.docx) · Text — imported books are stored on this device and play offline.</p>
+      </section>
+    </main>
+
+    <!-- ============ LIBRARY ============ -->
+    <main id="view-library" class="view hidden" data-view="library">
+      <header class="page-head">
+        <h1>Library</h1>
+        <input type="search" id="library-search" placeholder="Search your books" />
+      </header>
+      <div id="library-list" class="library-list" role="list"></div>
+      <p id="library-empty" class="empty-hint hidden">Your library is empty. Import a PDF or Word document to start listening.</p>
+    </main>
+
+    <!-- ============ PROFILE / SETTINGS ============ -->
+    <main id="view-profile" class="view hidden" data-view="profile">
+      <header class="page-head"><h1>Profile</h1></header>
+
+      <section class="settings-group">
+        <h3>Playback</h3>
+        <button class="setting-row" id="setting-voice">
+          <span>Voice</span><span class="setting-value" id="setting-voice-value">Default</span>
+        </button>
+        <button class="setting-row" id="setting-speed">
+          <span>Speed</span><span class="setting-value" id="setting-speed-value">1.0×</span>
+        </button>
+      </section>
+
+      <section class="settings-group">
+        <h3>Notifications</h3>
+        <label class="setting-row">
+          <span>Playback notification<br /><small>Show media controls in the notification shade while listening</small></span>
+          <input type="checkbox" id="setting-media-notif" class="switch" checked />
+        </label>
+        <label class="setting-row">
+          <span>Reading reminders<br /><small>Remind you to pick up where you left off</small></span>
+          <input type="checkbox" id="setting-reminders" class="switch" />
+        </label>
+        <p class="setting-note hidden" id="notif-denied-note">Notifications are blocked for this site — enable them in your browser/site settings.</p>
+      </section>
+
+      <section class="settings-group">
+        <h3>Storage</h3>
+        <div class="setting-row static">
+          <span>Books stored on device</span><span class="setting-value" id="setting-book-count">0</span>
+        </div>
+        <div class="setting-row static">
+          <span>Space used</span><span class="setting-value" id="setting-storage">—</span>
+        </div>
+        <button class="setting-row danger" id="setting-clear"><span>Delete all books</span></button>
+      </section>
+
+      <section class="settings-group">
+        <h3>About</h3>
+        <div class="setting-row static"><span>VoxReader</span><span class="setting-value" id="app-version">v1.0.0</span></div>
+        <div class="setting-row static"><span>Offline ready</span><span class="setting-value" id="offline-status">checking…</span></div>
+        <p class="setting-note">Everything stays on your device — no account, no uploads, works with no internet connection.</p>
+      </section>
+    </main>
+
+    <!-- ============ READER (full-screen) ============ -->
+    <section id="view-reader" class="reader hidden">
+      <header class="reader-top">
+        <button class="icon-btn" id="reader-close" aria-label="Close reader">⌄</button>
+        <div class="reader-top-actions">
+          <button class="icon-btn" id="reader-bookmark" aria-label="Bookmark position">🔖</button>
+          <button class="icon-btn" id="reader-font" aria-label="Text size and view">Aa</button>
+          <button class="icon-btn" id="reader-view-toggle" aria-label="Toggle original / text view">📃</button>
+        </div>
+      </header>
+      <div class="reader-title-chip" id="reader-title-chip"></div>
+
+      <div class="reader-content" id="reader-content">
+        <article id="reader-text" class="reader-text"></article>
+        <div id="reader-original" class="reader-original hidden"></div>
+      </div>
+
+      <footer class="reader-bottom">
+        <div class="scrub-row">
+          <input type="range" id="reader-scrub" min="0" max="1000" value="0" step="1" aria-label="Seek" />
+        </div>
+        <div class="time-row">
+          <span id="time-elapsed">00:00</span>
+          <span id="page-indicator">– of –</span>
+          <span id="time-total">00:00</span>
+        </div>
+        <div class="controls-row">
+          <button class="ctl voice-ctl" id="ctl-voice" aria-label="Choose voice">🗣️</button>
+          <button class="ctl" id="ctl-back" aria-label="Back 10 seconds"><span class="skip-n">10</span>↺</button>
+          <button class="ctl ctl-play" id="ctl-play" aria-label="Play or pause">▶</button>
+          <button class="ctl" id="ctl-fwd" aria-label="Forward 10 seconds">↻<span class="skip-n">10</span></button>
+          <button class="ctl speed-ctl" id="ctl-speed" aria-label="Playback speed">1.0</button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- ============ MINI PLAYER + NAV ============ -->
+    <div id="mini-player" class="mini-player hidden">
+      <img id="mini-cover" alt="" />
+      <div class="mini-meta">
+        <div id="mini-title">—</div>
+        <div id="mini-sub" class="mini-sub">—</div>
+      </div>
+      <button class="icon-btn mini-play" id="mini-play" aria-label="Play or pause">▶</button>
+      <div class="mini-progress"><div id="mini-progress-bar"></div></div>
+    </div>
+
+    <nav id="bottom-nav" class="bottom-nav">
+      <button data-nav="home" class="nav-btn active"><span class="nav-icon">🏠</span>Home</button>
+      <button data-nav="library" class="nav-btn"><span class="nav-icon">📚</span>Library</button>
+      <button id="nav-add" class="nav-add" aria-label="Import a book">＋</button>
+      <button data-nav="reader" class="nav-btn"><span class="nav-icon">📖</span>Reader</button>
+      <button data-nav="profile" class="nav-btn"><span class="nav-icon">👤</span>Profile</button>
+    </nav>
+
+    <!-- ============ SHEETS ============ -->
+    <div id="sheet-backdrop" class="sheet-backdrop hidden"></div>
+
+    <div id="sheet-voice" class="sheet hidden" role="dialog" aria-label="Choose voice">
+      <div class="sheet-handle"></div>
+      <h3>Voice</h3>
+      <p class="sheet-note" id="voice-note">Voices are provided by your device and work offline.</p>
+      <div id="voice-list" class="voice-list"></div>
+    </div>
+
+    <div id="sheet-speed" class="sheet hidden" role="dialog" aria-label="Playback speed">
+      <div class="sheet-handle"></div>
+      <h3>Speed <span id="speed-value" class="speed-value">1.0×</span></h3>
+      <input type="range" id="speed-slider" min="0.5" max="3.5" step="0.05" value="1" />
+      <div id="speed-presets" class="speed-presets"></div>
+    </div>
+
+    <div id="sheet-text" class="sheet hidden" role="dialog" aria-label="Paste text">
+      <div class="sheet-handle"></div>
+      <h3>Listen to pasted text</h3>
+      <input type="text" id="paste-title" placeholder="Title (optional)" />
+      <textarea id="paste-text" rows="8" placeholder="Paste or type anything you want read aloud…"></textarea>
+      <button class="btn-primary" id="paste-save">Save &amp; Listen</button>
+    </div>
+
+    <div id="sheet-font" class="sheet hidden" role="dialog" aria-label="Text settings">
+      <div class="sheet-handle"></div>
+      <h3>Text size</h3>
+      <div class="font-row">
+        <button class="ctl" id="font-smaller">A−</button>
+        <span id="font-size-value">100%</span>
+        <button class="ctl" id="font-bigger">A+</button>
+      </div>
+    </div>
+
+    <div id="sheet-book" class="sheet hidden" role="dialog" aria-label="Book options">
+      <div class="sheet-handle"></div>
+      <h3 id="book-sheet-title">Book</h3>
+      <button class="setting-row" id="book-sheet-listen"><span>▶ Listen</span></button>
+      <button class="setting-row" id="book-sheet-restart"><span>↺ Start from beginning</span></button>
+      <button class="setting-row danger" id="book-sheet-delete"><span>🗑 Delete from device</span></button>
+    </div>
+
+    <!-- import progress overlay -->
+    <div id="import-overlay" class="import-overlay hidden">
+      <div class="import-box">
+        <div class="spinner"></div>
+        <div id="import-status">Importing…</div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <input type="file" id="file-input" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple hidden />
+  </div>
+
+  <script src="vendor/mammoth.browser.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
