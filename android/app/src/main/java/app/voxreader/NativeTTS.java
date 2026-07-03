@@ -189,14 +189,21 @@ public class NativeTTS extends Plugin {
     @PluginMethod
     public void configure(PluginCall call) {
         String voiceId = call.getString("voice");
+        String lang = call.getString("lang");
         Float rate = call.getFloat("rate");
         if (rate != null) tts.setSpeechRate(rate);
+        boolean voiceSet = false;
         if (voiceId != null && ttsReady) {
             try {
                 for (Voice v : tts.getVoices()) {
-                    if (v.getName().equals(voiceId)) { tts.setVoice(v); break; }
+                    if (v.getName().equals(voiceId)) { tts.setVoice(v); voiceSet = true; break; }
                 }
             } catch (Exception ignored) {}
+        }
+        // No exact voice match — at least switch the engine to the book's language
+        // (e.g. Tamil/Hindi books on engines that expose languages but few voices).
+        if (!voiceSet && lang != null && ttsReady) {
+            try { tts.setLanguage(Locale.forLanguageTag(lang)); } catch (Exception ignored) {}
         }
         call.resolve();
     }

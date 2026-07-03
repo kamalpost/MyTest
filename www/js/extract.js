@@ -20,11 +20,13 @@ export function countWords(text) {
   return m ? m.length : 0;
 }
 
-/** Split a block of prose into speakable sentences, hard-capping very long ones. */
+/** Split a block of prose into speakable sentences, hard-capping very long ones.
+    Sentence-ending punctuation covers Latin (.!?…), Indic danda/double-danda (।॥),
+    Arabic/Urdu (۔؟) and CJK (。！？) full stops. */
 export function splitSentences(text) {
   const clean = text.replace(/\s+/g, ' ').trim();
   if (!clean) return [];
-  const raw = clean.match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) || [clean];
+  const raw = clean.match(/[^.!?…।॥۔؟。！？]+[.!?…।॥۔؟。！？]+["')\]]*\s*|[^.!?…।॥۔؟。！？]+$/g) || [clean];
   const out = [];
   for (let s of raw) {
     s = s.trim();
@@ -56,6 +58,46 @@ function buildSentences(blocks) {
     }
   });
   return sentences;
+}
+
+/* ---------------- language detection ----------------
+   Detects the dominant writing script of a book so the player can automatically
+   pick a matching TTS voice (e.g. a Tamil book gets a Tamil voice even when the
+   phone's UI language is English). Returns a BCP-47 base code. Note: scripts map
+   to their most common language — Devanagari is reported as 'hi' (also covers
+   Marathi/Sanskrit text; a hi-IN voice reads Devanagari either way). */
+
+const SCRIPT_RANGES = [
+  ['ta', /[஀-௿]/g], // Tamil
+  ['kn', /[ಀ-೿]/g], // Kannada
+  ['hi', /[ऀ-ॿ]/g], // Devanagari (Hindi, Marathi)
+  ['te', /[ఀ-౿]/g], // Telugu
+  ['ml', /[ഀ-ൿ]/g], // Malayalam
+  ['bn', /[ঀ-৿]/g], // Bengali
+  ['gu', /[઀-૿]/g], // Gujarati
+  ['pa', /[਀-੿]/g], // Gurmukhi (Punjabi)
+  ['or', /[଀-୿]/g], // Odia
+  ['si', /[඀-෿]/g], // Sinhala
+  ['ur', /[؀-ۿ]/g], // Arabic script (Urdu, Arabic)
+  ['zh', /[一-鿿]/g], // CJK ideographs
+  ['ja', /[぀-ヿ]/g], // Hiragana/Katakana
+  ['ko', /[가-힯]/g], // Hangul
+];
+
+export function detectLanguage(text) {
+  const sample = text.slice(0, 4000);
+  let best = null, bestCount = 0;
+  for (const [lang, re] of SCRIPT_RANGES) {
+    const count = (sample.match(re) || []).length;
+    if (count > bestCount) { best = lang; bestCount = count; }
+  }
+  const letters = (sample.match(/\p{L}/gu) || []).length;
+  if (best && letters && bestCount / letters >= 0.2) return best;
+  return 'en';
+}
+
+function blocksLanguage(blocks) {
+  return detectLanguage(blocks.map((b) => b.text).join(' '));
 }
 
 function titleFromFilename(name) {
@@ -115,6 +157,7 @@ export async function extractPdf(file, onProgress) {
     title,
     author: meta.author || 'PDF document',
     type: 'pdf',
+    lang: blocksLanguage(blocks),
     pages: doc.numPages,
     blocks,
     sentences,
@@ -202,6 +245,7 @@ export async function extractDocx(file) {
     title,
     author: 'Word document',
     type: 'docx',
+    lang: blocksLanguage(blocks),
     pages: 1,
     blocks,
     sentences,
@@ -224,6 +268,7 @@ export function extractPlainText(title, text, type = 'text') {
     title: title || 'Pasted text',
     author: type === 'txt' ? 'Text file' : 'Pasted text',
     type,
+    lang: blocksLanguage(blocks),
     pages: 1,
     blocks,
     sentences,

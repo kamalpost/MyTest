@@ -13,6 +13,7 @@ reference.
 | 5 | [The Import Pipeline](05-import-pipeline.md) | `extract.js` — how PDF/Word files become readable sentences |
 | 6 | [Android Native Layer](06-android-native.md) | Capacitor, the `NativeTTS` Java plugin, notifications, and the CI build |
 | 7 | [How to Extend the App](07-how-to-extend.md) | Step-by-step recipes for common enhancements |
+| 8 | [Language Support](08-language-support.md) | Tamil/Kannada/Hindi & other languages: detection, voices, danda splitting |
 
 ## The 60-second summary
 

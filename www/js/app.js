@@ -7,7 +7,7 @@ import { createPlayer, SPEED_PRESETS, formatTime, formatRemaining } from './play
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const state = {
   books: [],            // light book records for lists
   currentBookId: null,  // book loaded in the player
@@ -32,13 +32,15 @@ async function boot() {
   wireProfile();
   wirePlayerEvents();
 
-  const [rate, voiceURI, fontScale] = await Promise.all([
+  const [rate, voiceURI, voiceMap, fontScale] = await Promise.all([
     db.getSetting('rate', 1),
     db.getSetting('voiceURI', null),
+    db.getSetting('voiceMap', {}),
     db.getSetting('fontScale', 1),
   ]);
   player.rate = rate;
   player.voiceURI = voiceURI;
+  player.voiceMap = voiceMap || {};
   state.fontScale = fontScale;
   document.documentElement.style.setProperty('--reader-scale', fontScale);
 
@@ -204,7 +206,7 @@ function renderLibrary() {
       ${coverImg(b)}
       <div class="lib-meta">
         <div class="lib-title">${escapeHtml(b.title)}</div>
-        <div class="lib-sub"><span class="type-badge ${b.type}">${escapeHtml(typeLabel(b.type).toUpperCase())}</span>${b.pages > 1 ? `${b.pages} pages · ` : ''}${bookRemainingText(b)}</div>
+        <div class="lib-sub"><span class="type-badge ${b.type}">${escapeHtml(typeLabel(b.type).toUpperCase())}</span>${b.lang && b.lang !== 'en' ? `${escapeHtml(languageName(b.lang))} · ` : ''}${b.pages > 1 ? `${b.pages} pages · ` : ''}${bookRemainingText(b)}</div>
         <div class="lib-progress"><div style="width:${pct}%"></div></div>
       </div>
       <button class="lib-more" aria-label="Book options">⋮</button>`;
@@ -658,9 +660,15 @@ function openVoiceSheet() {
 function renderVoiceList() {
   const list = $('#voice-list');
   const voices = player.voices;
-  $('#voice-note').textContent = voices.length
+  const bookBase = player.bookLang();
+  let note = voices.length
     ? 'Voices are provided by your device and work offline.'
     : 'No voices found (yet). On Android, install “Speech Recognition & Synthesis” or enable a TTS engine in system settings.';
+  if (voices.length && bookBase && !voices.some((v) => v.lang.toLowerCase().startsWith(bookBase))) {
+    note = `This book looks like ${languageName(bookBase)}, but no ${languageName(bookBase)} voice is installed. `
+      + 'On Android: Settings → System → Text-to-speech → Google engine → Install voice data.';
+  }
+  $('#voice-note').textContent = note;
   list.innerHTML = '';
   const selected = player.getVoice();
   const byLang = new Map();
@@ -669,11 +677,16 @@ function renderVoiceList() {
     if (!byLang.has(lang)) byLang.set(lang, []);
     byLang.get(lang).push(v);
   }
+  // ordering: the current book's language first, then the device language, then A–Z
   const langs = Array.from(byLang.keys()).sort((a, b) => {
-    const mine = (navigator.language || 'en').split('-')[0];
-    const am = a.startsWith(mine) ? 0 : 1;
-    const bm = b.startsWith(mine) ? 0 : 1;
-    return am - bm || a.localeCompare(b);
+    const mine = (navigator.language || 'en').split('-')[0].toLowerCase();
+    const rank = (l) => {
+      const low = l.toLowerCase();
+      if (bookBase && low.startsWith(bookBase)) return 0;
+      if (low.startsWith(mine)) return 1;
+      return 2;
+    };
+    return rank(a) - rank(b) || a.localeCompare(b);
   });
   for (const lang of langs) {
     const head = document.createElement('div');
@@ -687,6 +700,7 @@ function renderVoiceList() {
       btn.addEventListener('click', async () => {
         player.setVoice(v.voiceURI);
         await db.setSetting('voiceURI', v.voiceURI);
+        await db.setSetting('voiceMap', player.voiceMap); // per-language memory
         renderVoiceList();
         renderProfile();
         if (!player.playing) previewVoice(v);

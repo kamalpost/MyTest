@@ -11,6 +11,7 @@ VoxReader ships two ways from the same codebase:
 
 - **Import & Listen** — PDF, Word (`.docx`) and plain-text files from local storage, or paste text directly. Extraction happens on-device (pdf.js + mammoth); nothing is ever uploaded.
 - **Natural text-to-speech** — uses the voices installed on your device (Web Speech API), grouped by language with an instant preview. Voices marked *offline* work with no connection.
+- **Multilingual books** — detects the book's script (Tamil, Kannada, Hindi/Devanagari, Telugu, Malayalam, Bengali and more), auto-picks a matching voice, remembers your preferred voice per language, and splits Hindi sentences on the danda (।/॥). See [docs/08-language-support.md](docs/08-language-support.md).
 - **Speed control** — 0.5× to 3.5× via slider or one-tap presets; listening-time estimates update everywhere.
 - **Full player** — play/pause, ±10 s skip, drag-to-seek progress bar, tap any sentence to read from there, live sentence highlighting, page indicator, elapsed/total time.
 - **Media notification** — playback controls appear in the notification shade / lock screen (Media Session API) with the book cover as artwork.

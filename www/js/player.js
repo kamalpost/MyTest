@@ -29,7 +29,8 @@ export function createPlayer() {
 class BasePlayer {
   constructor() {
     this.voices = [];        // [{voiceURI, name, lang, localService}]
-    this.voiceURI = null;
+    this.voiceURI = null;    // the user's most recent explicit voice pick
+    this.voiceMap = {};      // per-language picks: { ta: voiceURI, hi: voiceURI, en: … }
     this.rate = 1;
     this.book = null;
     this.cursor = 0;
@@ -44,24 +45,46 @@ class BasePlayer {
   on(event, fn) { this.listeners[event].push(fn); }
   _emit(event, ...args) { for (const fn of this.listeners[event]) fn(...args); }
 
+  /** The language of the loaded book (BCP-47 base code like 'ta'), if detected. */
+  bookLang() {
+    return (this.book && this.book.lang && this.book.lang.split('-')[0]) || null;
+  }
+
+  /** Pick the voice to speak with. Priority:
+      1. the user's saved choice FOR THIS BOOK'S LANGUAGE (voiceMap)
+      2. the user's global choice, if it can speak the book's language
+      3. any voice matching the book's language (offline voices first)
+      4. the device language, then English, then anything. */
   getVoice() {
     if (!this.voices.length) return null;
-    if (this.voiceURI) {
-      const v = this.voices.find((x) => x.voiceURI === this.voiceURI);
-      if (v) return v;
+    const byUri = (uri) => this.voices.find((x) => x.voiceURI === uri);
+    const speaks = (v, base) => v && v.lang && v.lang.toLowerCase().startsWith(base);
+    const bestFor = (base) =>
+      this.voices.find((x) => speaks(x, base) && x.localService) ||
+      this.voices.find((x) => speaks(x, base));
+
+    const bookBase = this.bookLang();
+    if (bookBase) {
+      const remembered = byUri(this.voiceMap[bookBase]);
+      if (speaks(remembered, bookBase)) return remembered;
+      const global = byUri(this.voiceURI);
+      if (speaks(global, bookBase)) return global;
+      const match = bestFor(bookBase);
+      if (match) return match;
+      // no voice for this language installed — fall through to the defaults
     }
-    const lang = navigator.language || 'en-US';
-    return (
-      this.voices.find((x) => x.lang === lang && x.localService) ||
-      this.voices.find((x) => x.lang.startsWith(lang.split('-')[0]) && x.localService) ||
-      this.voices.find((x) => x.lang.startsWith('en') && x.localService) ||
-      this.voices.find((x) => x.localService) ||
-      this.voices[0]
-    );
+    const global = byUri(this.voiceURI);
+    if (global) return global;
+    const deviceBase = (navigator.language || 'en-US').split('-')[0].toLowerCase();
+    return bestFor(deviceBase) || bestFor('en') ||
+      this.voices.find((x) => x.localService) || this.voices[0];
   }
 
   setVoice(voiceURI) {
     this.voiceURI = voiceURI;
+    // remember this pick for the voice's own language, so each language keeps its voice
+    const v = this.voices.find((x) => x.voiceURI === voiceURI);
+    if (v && v.lang) this.voiceMap[v.lang.split('-')[0].toLowerCase()] = voiceURI;
     if (this.playing) this._restartCurrent();
   }
 
@@ -380,7 +403,7 @@ class NativePlayer extends BasePlayer {
       this.plugin.requestNotifications().catch(() => {});
     }
     try {
-      await this.plugin.configure({ voice: this.voiceURI || undefined, rate: this.rate });
+      await this.plugin.configure(this._voiceConfig());
       await this._queueFrom(this.cursor);
     } catch (e) {
       this.playing = false;
@@ -390,6 +413,18 @@ class NativePlayer extends BasePlayer {
     this._sendNowPlaying();
     this._emit('state');
     return true;
+  }
+
+  /** Resolve the voice for the current book; include the book language so the
+      native side can at least switch the engine language when no exact voice
+      id matches (e.g. a Tamil book on a device with a bare-bones TTS engine). */
+  _voiceConfig() {
+    const v = this.getVoice();
+    return {
+      voice: (v && v.voiceURI) || undefined,
+      lang: this.book?.lang || (v && v.lang) || undefined,
+      rate: this.rate,
+    };
   }
 
   pause() {
@@ -416,7 +451,7 @@ class NativePlayer extends BasePlayer {
   async _restartCurrent() {
     if (!this.playing) return;
     try {
-      await this.plugin.configure({ voice: this.voiceURI || undefined, rate: this.rate });
+      await this.plugin.configure(this._voiceConfig());
       await this._queueFrom(this.cursor);
     } catch { /* keep state; next play() retries */ }
   }

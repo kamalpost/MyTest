@@ -56,7 +56,7 @@ const SPEECH_STUB = `
       current = u;
       window.__spoken.push({ text: u.text, voice: u.voice && u.voice.name, rate: u.rate });
       const words = (u.text.match(/\\S+/g) || []).length;
-      const ms = Math.max(12, (words / ((170 * (u.rate || 1)) / 60)) * 1000 / 40);
+      const ms = Math.max(12, (words / ((170 * (u.rate || 1)) / 60)) * 1000 / 15);
       u.__timer = setTimeout(() => {
         if (current !== u) return;
         synth.speaking = false;
@@ -226,14 +226,43 @@ function check(name, cond, extra) {
   await page.click('#ctl-play');
   await page.screenshot({ path: path.join(SHOTS, '05-docx-reader.png') });
 
+  console.log('\n— 7b. Indic language support (Hindi paste) —');
+  await page.click('#reader-close');
+  await page.click('#tile-text');
+  await page.waitForSelector('#sheet-text:not(.hidden)');
+  await page.fill('#paste-title', 'हिंदी परीक्षण');
+  await page.fill('#paste-text',
+    'यह पहला वाक्य है। यह दूसरा वाक्य है। क्या यह तीसरा वाक्य है? हाँ, यह तीसरा वाक्य है।\n\n' +
+    'यह दूसरा अनुच्छेद है। इसमें भी कुछ वाक्य हैं। पढ़ने का आनंद लीजिये॥');
+  await page.click('#paste-save');
+  await page.waitForSelector('#view-reader:not(.hidden)', { timeout: 5000 });
+  await page.waitForTimeout(300);
+  const hindiSpans = await page.locator('#reader-text span[data-si]').count();
+  check('danda (।/॥) splits Hindi sentences', hindiSpans >= 6, `spans=${hindiSpans}`);
+  const detectedLang = await page.evaluate(() => window.__vox.player.book.lang);
+  check('book language detected as Hindi', detectedLang === 'hi', detectedLang);
+  await page.click('#ctl-play');
+  await page.waitForTimeout(900);
+  const hindiVoice = await page.evaluate(() => window.__spoken[window.__spoken.length - 1].voice);
+  check('Hindi voice auto-picked over global English choice', hindiVoice === 'Priya (Stub)', hindiVoice);
+  await page.click('#ctl-play'); // pause
+  // voice sheet puts the book's language group first
+  await page.click('#ctl-voice');
+  await page.waitForSelector('#sheet-voice:not(.hidden)');
+  const firstGroup = await page.locator('.voice-lang').first().textContent();
+  check('voice sheet lists Hindi group first for a Hindi book', /hindi|हिन्दी|hi/i.test(firstGroup), firstGroup);
+  await page.click('#sheet-backdrop');
+  await page.screenshot({ path: path.join(SHOTS, '10-hindi-reader.png') });
+
   console.log('\n— 8. Library, mini player, home —');
   await page.click('#reader-close');
   check('mini player appears after closing reader', await page.isVisible('#mini-player'));
   const miniTitle = await page.textContent('#mini-title');
-  check('mini player shows current book', miniTitle.includes('Meditations'), miniTitle);
+  check('mini player shows current book', miniTitle.includes('हिंदी'), miniTitle);
   await page.click('[data-nav="library"]');
   await page.waitForTimeout(300);
-  check('library lists 3 books', (await page.locator('.library-item').count()) === 3);
+  check('library lists 4 books', (await page.locator('.library-item').count()) === 4);
+  check('library shows book language', (await page.textContent('#library-list')).toLowerCase().includes('hindi'));
   check('remaining-time estimates shown', (await page.textContent('#library-list')).includes('remaining') || (await page.textContent('#library-list')).includes('less than a minute'));
   await page.fill('#library-search', 'meditations');
   await page.waitForTimeout(200);
@@ -242,13 +271,13 @@ function check(name, cond, extra) {
   await page.screenshot({ path: path.join(SHOTS, '06-library.png') });
   await page.click('[data-nav="home"]');
   await page.waitForTimeout(300);
-  check('continue-listening row populated', (await page.locator('#continue-row .book-card').count()) === 3);
+  check('continue-listening row populated', (await page.locator('#continue-row .book-card').count()) === 4);
   await page.screenshot({ path: path.join(SHOTS, '07-home-books.png') });
 
   console.log('\n— 9. Persistence across reload —');
   await page.reload();
   await page.waitForTimeout(900);
-  check('books survive reload', (await page.locator('#continue-row .book-card').count()) === 3);
+  check('books survive reload', (await page.locator('#continue-row .book-card').count()) === 4);
   const speedVal = await page.evaluate(async () => {
     const mod = await import('./js/db.js');
     return mod.getSetting('rate', 1);
@@ -256,8 +285,11 @@ function check(name, cond, extra) {
   check('speed setting persisted (2×)', speedVal === 2, `rate=${speedVal}`);
   const voiceVal = await page.evaluate(async () => (await import('./js/db.js')).getSetting('voiceURI'));
   check('voice choice persisted', voiceVal === 'stub-en-US-2', voiceVal);
+  const voiceMapVal = await page.evaluate(async () => (await import('./js/db.js')).getSetting('voiceMap', {}));
+  check('per-language voice map persisted', voiceMapVal && voiceMapVal.en === 'stub-en-US-2', JSON.stringify(voiceMapVal));
   // resume position: open the PDF book again — cursor should be > 0
-  await page.click('#continue-row .book-card:nth-child(2)');
+  // (order by lastOpenedAt: hindi, docx, pdf, sample → pdf is 3rd)
+  await page.click('#continue-row .book-card:nth-child(3)');
   await page.waitForSelector('#view-reader:not(.hidden)');
   await page.waitForTimeout(400);
   const resumedIdx = await page.evaluate(() => Number(document.querySelector('#reader-text span.active')?.dataset.si));
@@ -267,7 +299,7 @@ function check(name, cond, extra) {
   console.log('\n— 10. Profile / settings —');
   await page.click('[data-nav="profile"]');
   await page.waitForTimeout(400);
-  check('book count shown', (await page.textContent('#setting-book-count')).trim() === '3');
+  check('book count shown', (await page.textContent('#setting-book-count')).trim() === '4');
   check('storage usage shown', /(KB|MB|GB)/.test(await page.textContent('#setting-storage')));
   check('speed shown in settings', (await page.textContent('#setting-speed-value')).includes('2'));
   // reminders toggle triggers Notification permission (granted in this context)
@@ -294,7 +326,7 @@ function check(name, cond, extra) {
   await page.click('[data-nav="home"]');
   await page.waitForTimeout(300);
   check('home renders offline', await page.isVisible('#view-home'));
-  check('books available offline', (await page.locator('#continue-row .book-card').count()) === 3);
+  check('books available offline', (await page.locator('#continue-row .book-card').count()) === 4);
   await page.click('#continue-row .book-card:nth-child(1)');
   await page.waitForSelector('#view-reader:not(.hidden)', { timeout: 5000 });
   await page.click('#ctl-play');
@@ -313,7 +345,7 @@ function check(name, cond, extra) {
   await page.waitForSelector('#sheet-book:not(.hidden)');
   await page.click('#book-sheet-delete');
   await page.waitForTimeout(500);
-  check('book deleted from library', (await page.locator('.library-item').count()) === 2);
+  check('book deleted from library', (await page.locator('.library-item').count()) === 3);
 
   console.log('\n— console errors —');
   const realErrors = errors.filter((e) => !e.includes('favicon') && !e.includes('net::ERR_INTERNET_DISCONNECTED') && !e.includes('Failed to load resource'));
