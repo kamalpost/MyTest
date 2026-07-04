@@ -3,11 +3,12 @@
 import * as db from './db.js';
 import { extractFile, extractPlainText, openPdf, renderPdfPage, assessTextQuality } from './extract.js';
 import { createPlayer, SPEED_PRESETS, formatTime, formatRemaining } from './player.js';
+import { createOcrJob, ocrSupported, tessLangFor, ocrLangLabel } from './ocr.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-const APP_VERSION = '1.1.2';
+const APP_VERSION = '1.2.0';
 const state = {
   books: [],            // light book records for lists
   currentBookId: null,  // book loaded in the player
@@ -314,6 +315,9 @@ function wireReader() {
     const span = e.target.closest('span[data-si]');
     if (span) player.seekToSentence(Number(span.dataset.si));
   });
+  $('#ocr-stop').addEventListener('click', () => {
+    if (ocrJob) { ocrJob.stop(); $('#ocr-status').textContent = 'Finishing current page…'; }
+  });
   // save position when leaving the page
   window.addEventListener('visibilitychange', () => { if (document.hidden) savePosition(); });
   window.addEventListener('pagehide', savePosition);
@@ -366,11 +370,60 @@ function closeReader() {
 function updateReaderWarning(book) {
   const el = $('#reader-warning');
   if (!book.textCorrupted) { el.classList.add('hidden'); return; }
-  el.textContent = '⚠ Legacy (non-Unicode) font — text & read-aloud are garbled. '
+  el.innerHTML = '';
+  const msg = document.createElement('span');
+  msg.textContent = '⚠ Legacy (non-Unicode) font — text & read-aloud are garbled. '
     + (book.type === 'pdf' && book.file
-      ? 'Showing the original pages (📃 toggles views). To listen, import a Unicode version.'
+      ? 'Showing the original pages (📃 toggles views).'
       : 'To listen, import a Unicode version of this book.');
+  el.appendChild(msg);
+  if (book.type === 'pdf' && book.file && ocrSupported()) {
+    const btn = document.createElement('button');
+    btn.className = 'ocr-btn';
+    btn.textContent = (book.ocrNext || 1) > 1
+      ? `▶ Resume text recognition (page ${book.ocrNext} of ${book.pages})`
+      : `✨ Recognize text (${ocrLangLabel(tessLangFor(book))} OCR) to enable listening`;
+    btn.addEventListener('click', () => runOcr(book.id));
+    el.appendChild(btn);
+  }
   el.classList.remove('hidden');
+}
+
+/* ================= OCR ================= */
+
+let ocrJob = null;
+
+async function runOcr(bookId) {
+  if (ocrJob) return;
+  const book = await db.getBook(bookId);
+  if (!book || !book.file) { toast('The original PDF is not available for this book'); return; }
+  player.stop();
+  $('#ocr-overlay').classList.remove('hidden');
+  $('#ocr-status').textContent = `Loading ${ocrLangLabel(tessLangFor(book))} recognition…`;
+  $('#ocr-progress-bar').style.width = `${(((book.ocrNext || 1) - 1) / (book.pages || 1)) * 100}%`;
+  ocrJob = createOcrJob(book);
+  try {
+    const res = await ocrJob.run(({ page, total }) => {
+      $('#ocr-status').textContent = `Recognizing page ${page} of ${total}…`;
+      $('#ocr-progress-bar').style.width = `${(page / total) * 100}%`;
+    });
+    $('#ocr-overlay').classList.add('hidden');
+    if (res.completed) {
+      toast('✅ Text recognized — this book can be listened to now!');
+      state.currentBookId = null; // force a full reader reload with the new text
+      await refreshBooks();
+      await openReader(bookId);
+    } else {
+      toast(`Recognition paused at page ${res.nextPage} — resume anytime from the banner`);
+      updateReaderWarning(await db.getBook(bookId));
+    }
+  } catch (err) {
+    $('#ocr-overlay').classList.add('hidden');
+    console.error(err);
+    toast(err.message || 'Text recognition failed');
+  } finally {
+    ocrJob = null;
+  }
 }
 
 function renderReaderText(book) {

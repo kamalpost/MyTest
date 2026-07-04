@@ -224,6 +224,19 @@
       </div>
     </div>
 
+    <!-- OCR progress overlay -->
+    <div id="ocr-overlay" class="import-overlay hidden">
+      <div class="import-box ocr-box">
+        <div class="spinner"></div>
+        <div id="ocr-status">Preparing text recognition…</div>
+        <div class="ocr-progress"><div id="ocr-progress-bar"></div></div>
+        <p class="ocr-note">Recognition runs fully on this device — nothing is uploaded.
+          Keep the app open; progress is saved every few pages, so you can stop
+          and continue later.</p>
+        <button class="btn-primary" id="ocr-stop">Stop &amp; save progress</button>
+      </div>
+    </div>
+
     <div id="toast" class="toast hidden"></div>
 
     <input type="file" id="file-input" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple hidden />

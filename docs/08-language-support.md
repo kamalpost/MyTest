@@ -90,9 +90,19 @@ tap-to-preview. In the browser/PWA the voice list instead comes from the OS/brow
   3. **Junk stripping** — control characters from glyphs with no Unicode mapping and
      spaces wrongly inserted before combining marks are removed.
 
-  Two problem classes remain genuinely unfixable at read time:
-  - *Scanned/image PDFs* have no text at all → nothing to read (an OCR step would be a
-    big but valuable future enhancement).
+  **v1.2.0 adds the final layer: on-device OCR.** For books flagged as glyph-encoded,
+  the warning strip offers *"Recognize text (OCR)"*. This renders each PDF page and
+  reads it with tesseract.js (WASM, vendored in `www/vendor/ocr/` with Tamil, Kannada,
+  Hindi and English models — fully offline, ~13 MB). The model is picked from the
+  book's detected language. Recognition runs page-by-page with progress saved every
+  3 pages, so huge books can be done across multiple sittings (stop & resume). When
+  the last page finishes, the recognized text replaces the garbled text and the book
+  becomes fully listenable. Code: `www/js/ocr.js` (job engine) + `runOcr()` in
+  `app.js` (UI). This is the same approach Google Docs uses on such files.
+
+  Two problem classes remain genuinely harder:
+  - *Scanned/image PDFs* have no text layer at all — but the same OCR button now
+    handles these too, as long as the scan quality is reasonable.
   - *Legacy glyph-encoded PDFs* (old Tamil/Hindi fonts like TSCII, Bamini or Krutidev
     that fake the script with custom Latin glyph codes) extract as garbage. VoxReader
     detects this (`assessTextQuality`: Latin letters inside Indic words, orphaned

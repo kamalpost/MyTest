@@ -18,6 +18,7 @@ const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
   '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
   '.png': 'image/png', '.svg': 'image/svg+xml', '.pdf': 'application/pdf',
+  '.wasm': 'application/wasm', '.gz': 'application/octet-stream',
 };
 
 function serve() {
@@ -307,7 +308,33 @@ function check(name, cond, extra) {
   await page.waitForTimeout(200);
   check('warning strip still visible in text view', await page.isVisible('#reader-warning'));
   await page.screenshot({ path: path.join(SHOTS, '11-corrupt-fallback.png') });
-  await page.evaluate(async (id) => { const db = await import('./js/db.js'); await db.deleteBook(id); }, cloneId);
+
+  console.log('\n— 7d. On-device OCR recovers the corrupted book —');
+  check('OCR button offered in warning strip', await page.locator('#reader-warning .ocr-btn').isVisible());
+  await page.locator('#reader-warning .ocr-btn').click();
+  await page.waitForSelector('#ocr-overlay:not(.hidden)', { timeout: 10000 });
+  check('OCR overlay with progress shown', true);
+  // 1-page Tamil fixture: allow generous time for WASM init + recognition
+  await page.waitForSelector('#ocr-overlay', { state: 'hidden', timeout: 240000 });
+  await page.waitForTimeout(800);
+  const ocrBook = await page.evaluate(async () => {
+    const db = await import('./js/db.js');
+    const b = await db.getBook('bk_corrupt_test');
+    return { corrupted: b.textCorrupted, ocrDone: b.ocrDone, lang: b.lang,
+             text: b.sentences.map((x) => x.t).join(' ').slice(0, 300) };
+  });
+  check('OCR completed and cleared corruption flag', ocrBook.ocrDone === true && ocrBook.corrupted === false, JSON.stringify({c: ocrBook.corrupted, d: ocrBook.ocrDone}));
+  const tamilChars = (ocrBook.text.match(/[\u0B80-\u0BFF]/g) || []).length;
+  check('OCR produced real Tamil text', tamilChars > 40, `tamilChars=${tamilChars} sample=${ocrBook.text.slice(0, 60)}`);
+  check('OCR language detected as Tamil', ocrBook.lang === 'ta', ocrBook.lang);
+  check('reader reloaded into text view', await page.isVisible('#reader-text'));
+  check('warning strip gone after OCR', await page.locator('#reader-warning').isHidden());
+  await page.screenshot({ path: path.join(SHOTS, '12-ocr-recovered.png') });
+  await page.evaluate(async (id) => {
+    const db = await import('./js/db.js');
+    await db.deleteBook(id);
+    window.__vox.state.books = window.__vox.state.books.filter((b) => b.id !== id);
+  }, cloneId);
   await page.evaluate((id) => window.__vox.openReader(id), tbook.id);
   await page.waitForTimeout(400);
   check('warning strip hidden for clean book', await page.locator('#reader-warning').isHidden());
