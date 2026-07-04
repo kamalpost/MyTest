@@ -1,14 +1,14 @@
 /* VoxReader — main UI controller */
 
 import * as db from './db.js';
-import { extractFile, extractPlainText, openPdf, renderPdfPage, assessTextQuality } from './extract.js';
+import { extractFile, extractPlainText, openPdf, renderPdfPage, assessTextQuality, QUALITY_VERSION } from './extract.js';
 import { createPlayer, SPEED_PRESETS, formatTime, formatRemaining } from './player.js';
 import { createOcrJob, ocrSupported, tessLangFor, ocrLangLabel } from './ocr.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.2.2';
 const state = {
   books: [],            // light book records for lists
   currentBookId: null,  // book loaded in the player
@@ -335,11 +335,13 @@ async function openReader(id) {
   $('#view-reader').classList.remove('hidden');
   $('#reader-title-chip').textContent = book.title + (book.author && book.author !== book.title ? ' · ' + book.author : '');
 
-  // Books imported before v1.1.1 have no corruption flag — compute it once now,
-  // so legacy glyph-encoded PDFs already in the library get the pages-view fallback.
-  if (book.textCorrupted === undefined) {
+  // Re-assess extraction quality when the book predates the current heuristics
+  // (older imports have no flag, or were checked with a weaker detector), so
+  // glyph-encoded PDFs already in the library get the pages-view fallback + OCR.
+  if (book.textCorrupted === undefined || book.qualityV !== QUALITY_VERSION) {
     book.textCorrupted = assessTextQuality(book.sentences.map((s) => s.t).join(' ')).corrupted;
-    db.updateBook(id, { textCorrupted: book.textCorrupted });
+    book.qualityV = QUALITY_VERSION;
+    db.updateBook(id, { textCorrupted: book.textCorrupted, qualityV: QUALITY_VERSION });
   }
   updateReaderWarning(book);
 

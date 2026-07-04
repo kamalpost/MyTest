@@ -122,6 +122,10 @@ function blocksLanguage(blocks) {
 
 const INDIC_CHAR = /[ऀ-෿]/;
 
+/** Bump when the corruption heuristics change: books assessed with an older
+    version are re-checked the next time they are opened. */
+export const QUALITY_VERSION = 2;
+
 export function assessTextQuality(text) {
   const tokens = (text.match(/\S+/g) || []).slice(0, 3000);
   let indicTokens = 0;
@@ -129,7 +133,13 @@ export function assessTextQuality(text) {
   for (const tok of tokens) {
     if (!INDIC_CHAR.test(tok)) continue;
     indicTokens++;
-    let bad = /[A-Za-z]/.test(tok); // Latin glyph codes inside an Indic word
+    // Letters from ANY non-Indic script (Latin, Greek, Cyrillic, …) or stray
+    // modifier symbols inside an Indic word are glyph-junk, not real text.
+    // (Old OpenOffice exports map Tamil ligatures to Greek Extended codepoints.)
+    let bad = false;
+    for (const c of tok) {
+      if ((/\p{L}/u.test(c) && !INDIC_CHAR.test(c)) || /\p{Sk}/u.test(c)) { bad = true; break; }
+    }
     if (!bad) {
       const chars = [...tok];
       for (let i = 0; i < chars.length; i++) {
@@ -271,6 +281,7 @@ export async function extractPdf(file, onProgress) {
     type: 'pdf',
     lang: blocksLanguage(blocks),
     textCorrupted: blocksCorrupted(blocks),
+    qualityV: QUALITY_VERSION,
     pages: doc.numPages,
     blocks,
     sentences,
@@ -377,6 +388,7 @@ export async function extractDocx(file) {
     type: 'docx',
     lang: blocksLanguage(blocks),
     textCorrupted: blocksCorrupted(blocks),
+    qualityV: QUALITY_VERSION,
     pages: 1,
     blocks,
     sentences,
@@ -401,6 +413,7 @@ export function extractPlainText(title, text, type = 'text') {
     type,
     lang: blocksLanguage(blocks),
     textCorrupted: blocksCorrupted(blocks),
+    qualityV: QUALITY_VERSION,
     pages: 1,
     blocks,
     sentences,

@@ -295,6 +295,13 @@ function check(name, cond, extra) {
     return { g: assessTextQuality(garbled), c: assessTextQuality(clean) };
   });
   check('glyph-encoded junk detected as corrupted', q.g.corrupted === true, `ratio=${q.g.suspiciousRatio.toFixed(2)}`);
+  const qGreek = await page.evaluate(async () => {
+    const { assessTextQuality } = await import('./js/extract.js');
+    // real sample from an OpenOffice-era Tamil PDF: ligatures mapped to Greek Extended
+    const greekJunk = ('\u1f4a\u1fbd \u0b89\u1fb7\u0ba4\u0bae \u0ba4\u0bbf\u0ba9\u0386 \u0b9c\u1fb9\u0ba9\u1f7f \u0bb5\u0bb4\u0bbf\u0baf\u0bbe\u0b95 \u0b86\u0ba4\u0bb5\u1fb9 \u0ba4\u0bb2\u0bc8\u0baf\u0bc6\u1f8c\u1fb0\u1f81\u0386 \u1f99\u1fb9\u0ba9\u0bae\u0bc7\u0baf\u0bc7 \u1f97\u1fbf \u0ba4\u0bb0\u0bc8\u0baf\u0bbf\u1fbf \u0b9a\u0bbf\u1fa0 \u1f81\u0bb4\u1fb8\u0ba4\u0bc8 ').repeat(4);
+    return assessTextQuality(greekJunk);
+  });
+  check('Greek-extended glyph junk detected (OpenOffice-era PDFs)', qGreek.corrupted === true, `ratio=${qGreek.suspiciousRatio.toFixed(2)} tokens=${qGreek.indicTokens}`);
   check('clean Unicode Tamil not flagged', q.c.corrupted === false, `ratio=${q.c.suspiciousRatio.toFixed(2)}`);
 
   // a glyph-encoded book imported by an OLD app version (no textCorrupted flag,
@@ -306,7 +313,8 @@ function check(name, cond, extra) {
     const sentences = [];
     for (let k = 0; k < 12; k++) sentences.push({ t: garbled, b: 0, p: 1, w: 12 });
     const clone = { ...full, id: 'bk_corrupt_test', title: 'Corrupt Fixture', sentences, sentenceCount: sentences.length, cursor: 0 };
-    delete clone.textCorrupted; // simulates a pre-v1.1.1 import
+    clone.textCorrupted = false; // old detector's WRONG verdict
+    delete clone.qualityV;       // assessed by an older heuristics version
     await db.putBook(clone);
     return clone.id;
   }, tbook.id);
