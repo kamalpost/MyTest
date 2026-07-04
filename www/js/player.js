@@ -13,6 +13,17 @@ const BASE_WPM = 170; // average narration words-per-minute at 1.0x
 
 export const SPEED_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5];
 
+/** Text as sent to the speech engine. Some TTS voices read punctuation aloud
+    ("quote", "asterisk"…), so strip characters that carry no spoken meaning.
+    The DISPLAYED sentence keeps them — this only affects what is spoken. */
+export function speakable(text) {
+  const cleaned = text
+    .replace(/["“”„‟«»‹›'‘’`´*_~^|<>#•·§]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || text;
+}
+
 function isNative() {
   return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 }
@@ -247,7 +258,7 @@ class WebPlayer extends BasePlayer {
     if (!this.playing || !this.book) return;
     if (this.cursor >= this.book.sentences.length) { this._finished(); return; }
     const s = this.book.sentences[this.cursor];
-    const u = new SpeechSynthesisUtterance(s.t);
+    const u = new SpeechSynthesisUtterance(speakable(s.t));
     const voice = this.getVoice();
     if (voice && voice._v) { u.voice = voice._v; u.lang = voice.lang; }
     u.rate = this.rate;
@@ -460,7 +471,7 @@ class NativePlayer extends BasePlayer {
     const end = Math.min(i + NATIVE_BATCH, this.book.sentences.length);
     this._batchEnd = end;
     const sentences = [];
-    for (let k = i; k < end; k++) sentences.push({ id: k, text: this.book.sentences[k].t });
+    for (let k = i; k < end; k++) sentences.push({ id: k, text: speakable(this.book.sentences[k].t) });
     return this.plugin.speakBatch({ sentences });
   }
 

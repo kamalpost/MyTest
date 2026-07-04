@@ -188,6 +188,19 @@ function check(name, cond, extra) {
   await page.waitForTimeout(200);
   check('tap-to-jump on sentence', (await page.evaluate(() => Number(document.querySelector('#reader-text span.active')?.dataset.si))) === 3);
 
+  console.log('\n— 5b. Speech sanitizer (quotes not read aloud) —');
+  const sp = await page.evaluate(async () => {
+    const { speakable } = await import('./js/player.js');
+    return {
+      quotes: speakable('\u201cஆ! இளவரசே!\u201d என\u2019றார் \u2018அவர்\u2019.'),
+      symbols: speakable('word *bold* _under_ #tag <x> |pipe|'),
+      onlyQuotes: speakable('\u201c\u201d'),
+    };
+  });
+  check('quotes stripped from spoken text', !/[\u201c\u201d\u2018\u2019"']/.test(sp.quotes) && sp.quotes.includes('இளவரசே'), sp.quotes);
+  check('markup symbols stripped from spoken text', sp.symbols === 'word bold under tag x pipe', sp.symbols);
+  check('all-punctuation text falls back safely', sp.onlyQuotes.length > 0);
+  // playback path uses it: play one sentence of the sample and inspect what reached the engine
   console.log('\n— 6. PDF import —');
   await page.click('#reader-close');
   await page.setInputFiles('#file-input', path.join(FIX_DIR, 'fixture.pdf'));
@@ -327,7 +340,10 @@ function check(name, cond, extra) {
   const tamilChars = (ocrBook.text.match(/[\u0B80-\u0BFF]/g) || []).length;
   check('OCR produced real Tamil text', tamilChars > 40, `tamilChars=${tamilChars} sample=${ocrBook.text.slice(0, 60)}`);
   check('OCR language detected as Tamil', ocrBook.lang === 'ta', ocrBook.lang);
-  check('reader reloaded into text view', await page.isVisible('#reader-text'));
+  check('OCR book opens against original pages (archive.org-style)', await page.isVisible('#reader-original'));
+  await page.click('#reader-view-toggle');
+  await page.waitForTimeout(200);
+  check('recognized text available via toggle', await page.isVisible('#reader-text'));
   check('warning strip gone after OCR', await page.locator('#reader-warning').isHidden());
   await page.screenshot({ path: path.join(SHOTS, '12-ocr-recovered.png') });
   await page.evaluate(async (id) => {
@@ -428,6 +444,8 @@ function check(name, cond, extra) {
   await page.waitForTimeout(300);
   await page.locator('.library-item .lib-more').first().click();
   await page.waitForSelector('#sheet-book:not(.hidden)');
+  check('OCR option offered for PDF books', await page.locator('#book-sheet-ocr').isVisible());
+  check('plain recognize label for non-OCRed PDF', !(await page.textContent('#book-sheet-ocr')).includes('again'));
   await page.click('#book-sheet-delete');
   await page.waitForTimeout(500);
   check('book deleted from library', (await page.locator('.library-item').count()) === 4);

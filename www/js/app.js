@@ -8,7 +8,7 @@ import { createOcrJob, ocrSupported, tessLangFor, ocrLangLabel } from './ocr.js'
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const state = {
   books: [],            // light book records for lists
   currentBookId: null,  // book loaded in the player
@@ -223,6 +223,11 @@ let bookSheetTarget = null;
 function openBookSheet(b) {
   bookSheetTarget = b;
   $('#book-sheet-title').textContent = b.title;
+  const ocrRow = $('#book-sheet-ocr');
+  ocrRow.classList.toggle('hidden', b.type !== 'pdf' || !ocrSupported());
+  ocrRow.querySelector('span').textContent = b.ocrDone
+    ? '✨ Recognize text again (OCR)'
+    : '✨ Recognize text (OCR)';
   openSheet('sheet-book');
 }
 
@@ -344,7 +349,11 @@ async function openReader(id) {
     renderReaderText(book);
     state.pdfDoc = null;
     // Glyph-encoded (non-Unicode) PDFs extract as garbage — open the real pages instead.
-    state.readerView = book.textCorrupted && book.type === 'pdf' && book.file ? 'original' : 'text';
+    // Corrupted books AND OCR'd books read best against the original pages
+    // (like archive.org: you look at the real scan while the voice reads the
+    // recognized text underneath; pages auto-scroll with playback).
+    state.readerView = (book.textCorrupted || book.ocrDone) && book.type === 'pdf' && book.file
+      ? 'original' : 'text';
     $('#reader-view-toggle').classList.toggle('hidden', book.type !== 'pdf' || !book.file);
     applyReaderView();
   }
@@ -682,6 +691,14 @@ function wireSheets() {
   // book options sheet
   $('#book-sheet-listen').addEventListener('click', () => {
     if (bookSheetTarget) { closeSheets(); openReader(bookSheetTarget.id); }
+  });
+  $('#book-sheet-ocr').addEventListener('click', async () => {
+    if (!bookSheetTarget) return;
+    const b = bookSheetTarget;
+    if (b.ocrDone && !confirm('Run text recognition again? The book’s current text will be replaced with the new result.')) return;
+    await db.updateBook(b.id, { ocrPages: null, ocrNext: 1, ocrDone: false });
+    closeSheets();
+    runOcr(b.id);
   });
   $('#book-sheet-restart').addEventListener('click', async () => {
     if (!bookSheetTarget) return;

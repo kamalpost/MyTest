@@ -15,7 +15,7 @@
      ocrLang:   tesseract language used (e.g. "tam")
      ocrDone:   true once the text has been swapped in                     */
 
-import { openPdf, renderPdfPage, splitSentences, countWords, detectLanguage, assessTextQuality } from './extract.js';
+import { openPdf, renderPdfPageForOcr, splitSentences, countWords, detectLanguage, assessTextQuality } from './extract.js';
 import * as db from './db.js';
 
 // book.lang (BCP-47 base) → tesseract traineddata name (vendor/ocr/lang/*.traineddata.gz)
@@ -68,8 +68,8 @@ export function createOcrJob(book) {
         let page = book.ocrNext || 1;
         for (; page <= total; page++) {
           if (stopped) break;
-          // ~1600px wide renders give tesseract enough detail without exhausting memory
-          const canvas = await renderPdfPage(doc, page, 1100);
+          // full-resolution render — scanned books lose their small marks if downsampled
+          const canvas = await renderPdfPageForOcr(doc, page);
           const { data } = await worker.recognize(canvas);
           canvas.width = canvas.height = 0; // release bitmap memory promptly
           pages[page] = (data.text || '').trim();

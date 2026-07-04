@@ -316,6 +316,23 @@ export async function renderPdfPage(doc, pageNum, targetWidth) {
   return canvas;
 }
 
+/** High-resolution render for OCR. Unlike the reading view, this must NOT
+    downsample: scanned books embed page images whose small marks (Tamil pulli,
+    matras) vanish if shrunk. ~2200px width ≈ 260 DPI on A4 — what OCR wants. */
+export async function renderPdfPageForOcr(doc, pageNum, targetWidth = 2200) {
+  const page = await doc.getPage(pageNum);
+  const viewport = page.getViewport({ scale: 1 });
+  const vp = page.getViewport({ scale: targetWidth / viewport.width });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(vp.width);
+  canvas.height = Math.ceil(vp.height);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  return canvas;
+}
+
 export async function openPdf(fileBlob) {
   const data = await fileBlob.arrayBuffer();
   return pdfjsLib.getDocument({ data, ...PDF_OPEN_OPTS }).promise;
