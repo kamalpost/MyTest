@@ -214,11 +214,26 @@ export function fixVisualOrder(text) {
 }
 
 /** Clean one extracted PDF text run: drop control chars from unmapped glyphs
-    and spaces wrongly inserted before combining marks. */
+    (KEEPING U+0000 for now — repairIndicNulls uses its position) and spaces
+    wrongly inserted before combining marks. */
 function cleanExtractedRun(text) {
   return text
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFD]/g, '')
+    .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\uFFFD]/g, '')
     .replace(/[ \t]+(?=\p{M})/gu, '');
+}
+
+/** Fonts often carry contextual variants of the Tamil i-sign (\u0BBF/\u0BC0) with
+    no ToUnicode mapping, which pdf.js extracts as U+0000. Dropping them silently
+    changes words. In Tamil, a NUL glyph directly after a consonant is that
+    i-sign in the overwhelming majority of cases, so infer \u0BBF there; any
+    remaining NULs are stripped. */
+function repairIndicNulls(blocks, lang) {
+  for (const b of blocks) {
+    if (lang === 'ta') {
+      b.text = b.text.replace(/([\u0B95-\u0BB9])\u0000+/g, '$1\u0BBF');
+    }
+    b.text = b.text.replace(/\u0000+/g, '');
+  }
 }
 
 /* ---------------- PDF ---------------- */
@@ -266,6 +281,9 @@ export async function extractPdf(file, onProgress) {
     flush();
     if (onProgress) onProgress(p, doc.numPages);
   }
+
+  // Repair unmapped i-sign glyphs, then strip leftover NULs (needs the language).
+  repairIndicNulls(blocks, blocksLanguage(blocks));
 
   // Decide once per document whether text came out in visual order, then repair.
   if (needsVisualOrderFix(blocks.map((b) => b.text).join(' '))) {

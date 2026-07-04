@@ -8,7 +8,7 @@ import { createOcrJob, ocrSupported, tessLangFor, ocrLangLabel } from './ocr.js'
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.2.3';
 const state = {
   books: [],            // light book records for lists
   currentBookId: null,  // book loaded in the player

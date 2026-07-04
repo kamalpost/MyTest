@@ -278,6 +278,8 @@ function check(name, cond, extra) {
   check('Tamil PDF text extracted in logical order',
     ttext.includes('பொன்') && ttext.includes('கரை') && ttext.includes('தெளிவாக') && ttext.includes('வானம்'),
     ttext.slice(0, 80));
+  // unmapped i-sign glyphs (extracted as NUL) must be inferred back, not dropped
+  check('i-signs recovered from unmapped glyphs', ttext.includes('காவிரி') && ttext.includes('நதியின்'), ttext.slice(0, 120));
   check('reader title from Tamil PDF metadata', (await page.textContent('#reader-title-chip')).includes('பொன்னி'));
   const tbook = await page.evaluate(() => ({
     id: window.__vox.player.book.id,

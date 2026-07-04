@@ -1,6 +1,6 @@
 /* VoxReader service worker — precaches the whole app so it runs fully offline. */
 
-const CACHE = 'voxreader-v1.2.2';
+const CACHE = 'voxreader-v1.2.3';
 
 const ASSETS = [
   './',
