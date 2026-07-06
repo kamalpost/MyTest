@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#212121">
+<title>YourHour — Phone Usage Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="phone">
+
+  <!-- ============ STATUS BAR ============ -->
+  <div id="statusbar">
+    <span id="sb-time">2:59</span>
+    <span class="sb-right">
+      <span class="sb-dot"></span>
+      <svg class="sb-wifi" viewBox="0 0 24 24" fill="#fff"><path d="M12 21l4.2-5.2a6.7 6.7 0 0 0-8.4 0zM2.5 9.2l2 2.5a11.8 11.8 0 0 1 15 0l2-2.5a15 15 0 0 0-19 0z"/><path d="M5.6 13.1l2 2.5a8.6 8.6 0 0 1 8.8 0l2-2.5a11.8 11.8 0 0 0-12.8 0z"/></svg>
+      <span class="sb-batt"><span class="sb-batt-num" id="sb-batt-num">62</span><span class="sb-batt-tip"></span></span>
+    </span>
+  </div>
+
+  <!-- ============ APP BARS ============ -->
+  <header id="appbar-main" class="appbar">
+    <svg class="logo-hand" viewBox="0 0 48 48" fill="none" stroke="#26b8d8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M13 26V13.5a2.4 2.4 0 0 1 4.8 0V22M17.8 21.5V9.8a2.4 2.4 0 0 1 4.8 0V21M22.6 20.8V7.4a2.4 2.4 0 0 1 4.8 0V21M27.4 21V10.6a2.4 2.4 0 0 1 4.8 0V25"/>
+      <path d="M13 25.5l-2.6-3.4a2.5 2.5 0 0 0-4 3l7.3 10.4A12.5 12.5 0 0 0 24 41h1.5A10.5 10.5 0 0 0 36 30.5V24"/>
+      <circle cx="24" cy="31" r="6.6" fill="#212121"/>
+      <path d="M24 27.6V31l2.4 1.7"/>
+    </svg>
+    <span class="logo-text">YourHour</span>
+    <span class="appbar-actions">
+      <svg class="ic" viewBox="0 0 24 24" fill="#26b8d8"><circle cx="12" cy="12" r="4.2"/><g stroke="#26b8d8" stroke-width="2" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.55 1.55M17.05 17.05l1.55 1.55M18.6 5.4l-1.55 1.55M6.95 17.05L5.4 18.6"/></g></svg>
+      <span class="bell-wrap">
+        <svg class="ic" viewBox="0 0 24 24" fill="#26b8d8"><path d="M12 22a2.2 2.2 0 0 0 2.2-2.2H9.8A2.2 2.2 0 0 0 12 22zm7-5.5v-1l-1.8-1.8V9.2a5.2 5.2 0 0 0-4-5.06V3.2a1.2 1.2 0 1 0-2.4 0v.94a5.2 5.2 0 0 0-4 5.06v4.5L5 15.5v1z"/></svg>
+        <span class="bell-badge">9</span>
+      </span>
+      <svg class="ic" viewBox="0 0 24 24" fill="#26b8d8"><path d="M19.4 13a7.5 7.5 0 0 0 .06-1 7.5 7.5 0 0 0-.06-1l2.1-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.6-.22l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.5.42L9.14 5.07a7.3 7.3 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.64L4.55 11a7.5 7.5 0 0 0-.06 1 7.5 7.5 0 0 0 .06 1l-2.09 1.65a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.6.22l2.5-1a7.3 7.3 0 0 0 1.7 1l.36 2.61A.5.5 0 0 0 10 22h4a.5.5 0 0 0 .5-.42l.36-2.61a7.3 7.3 0 0 0 1.7-1l2.5 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.64zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg>
+    </span>
+  </header>
+
+  <header id="appbar-reports" class="appbar appbar-title hidden">
+    <span class="page-title">Usage Report</span>
+  </header>
+
+  <header id="appbar-focus" class="appbar appbar-title hidden">
+    <span class="page-title">Focus</span>
+  </header>
+
+  <header id="appbar-challenges" class="appbar appbar-title hidden">
+    <span class="page-title">Challenges</span>
+  </header>
+
+  <header id="appbar-stories" class="appbar appbar-title hidden">
+    <span class="page-title">Stories</span>
+  </header>
+
+  <header id="appbar-daydetail" class="appbar appbar-title hidden">
+    <svg class="ic-back" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+    <span class="page-title" id="daydetail-title">06 Jul, 2026</span>
+    <span class="appbar-actions">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><path d="M14 2H7a1.6 1.6 0 0 0-1.6 1.6v16.8A1.6 1.6 0 0 0 7 22h10a1.6 1.6 0 0 0 1.6-1.6V6.6z"/><path d="M14 2v4.6h4.6"/><rect x="7.6" y="12.4" width="8.8" height="5.4" rx="1" fill="#fff" stroke="none"/><text x="12" y="16.6" font-size="4.2" font-weight="800" fill="#212121" text-anchor="middle" font-family="sans-serif">PDF</text></svg>
+    </span>
+  </header>
+
+  <header id="appbar-timeline" class="appbar appbar-title hidden">
+    <svg class="ic-back" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+    <span class="page-title">Usage Report</span>
+    <span class="appbar-actions">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+    </span>
+  </header>
+
+  <!-- ============ SCREENS ============ -->
+  <main id="content">
+
+    <!-- ______ DASHBOARD ______ -->
+    <section id="screen-dashboard" class="screen">
+      <!-- promo banner carousel -->
+      <div class="banner" id="banner-badge">
+        <div class="banner-top">
+          <span class="buddy-avatar">
+            <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="23" fill="#fff"/><circle cx="24" cy="24" r="20" fill="#7c2d12"/><path d="M4 33c6-8 14-11 22-9l14 7a20 20 0 0 1-36 2z" fill="#431407"/><circle cx="26" cy="20" r="7" fill="#fbbf77"/><path d="M20 15c2-4 9-4 11 0l-2 8h-8z" fill="#1c1917"/><rect x="30" y="17" width="9" height="3.4" rx="1.6" fill="#1c1917"/><text x="24" y="42" font-size="6" font-weight="700" fill="#fff" text-anchor="middle" font-family="sans-serif">BUDDY</text></svg>
+          </span>
+          <span class="banner-title">Buddy Badge Unlocked!!</span>
+        </div>
+        <div class="banner-bottom">View All&nbsp;&nbsp;<span class="arr">&#8594;</span></div>
+      </div>
+
+      <!-- rings card -->
+      <div class="card ring-card">
+        <div id="rings"></div>
+        <div class="ring-legend">
+          <div class="rl-left">
+            <div class="rl-label"><span class="dot dot-green"></span>USAGE TIME</div>
+            <div class="rl-value"><span class="v-green">2H 30M</span><span class="v-dim">/3H 45M</span></div>
+          </div>
+          <div class="rl-right">
+            <div class="rl-label"><span class="dot dot-teal"></span>UNLOCK COUNT</div>
+            <div class="rl-value"><span class="v-cyan">37</span><span class="v-dim">/50</span></div>
+          </div>
+          <svg class="rl-chev" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </div>
+        <p class="bullet-note">&bull; Screen time - Today (12:00 AM&ndash;now).</p>
+        <div class="ring-divider"></div>
+        <div class="ring-apps" id="ring-apps"></div>
+      </div>
+
+      <!-- reclaim banner -->
+      <div class="banner banner-reclaim">
+        <div class="reclaim-text">Reclaim Your<br>Time !!</div>
+      </div>
+
+      <!-- usage by category -->
+      <div class="card cat-card">
+        <div class="cat-head">
+          <span class="card-title">Usage by Category</span>
+          <span class="pro-pill">PRO</span>
+          <button class="viewall-btn">View<br>All</button>
+        </div>
+        <div class="cat-body">
+          <div id="donut"></div>
+          <div class="cat-legend" id="cat-legend"></div>
+        </div>
+      </div>
+
+      <!-- hourly chart -->
+      <div class="card chart-card">
+        <div id="hourly-chart"></div>
+        <div class="chart-key"><span class="key-sq"></span><span class="key-label">Usage/30 Minutes</span></div>
+        <p class="chart-caption">&bull; Today's phone usage calculated<br>over 30 minutes interval.</p>
+      </div>
+
+      <!-- weekly chart -->
+      <div class="card chart-card">
+        <div id="weekly-chart"></div>
+        <div class="chart-key chart-key-weekly">
+          <span class="key-sq"></span><span class="key-label">Usage in Minutes</span>
+          <span class="key-goal"><span class="key-dash"></span><span class="key-goal-txt">Usage Goal (225 minutes)</span></span>
+        </div>
+        <p class="chart-caption">&bull; This graph is calculated over past<br>7 days of usage.</p>
+      </div>
+
+      <!-- quick buttons -->
+      <div class="quick-row">
+        <button class="quick-btn quick-active" id="btn-screentime">Screen Time</button>
+        <button class="quick-btn" id="btn-unlockcount">Unlock Count</button>
+      </div>
+
+      <!-- ad placeholder -->
+      <div class="card ad-card">
+        <span class="ad-flag">&#9654;</span>
+        <div class="ad-row">
+          <span class="ad-icon">
+            <svg viewBox="0 0 48 48"><rect width="48" height="48" rx="10" fill="#010101"/><path d="M33.5 14.2a8.6 8.6 0 0 1-5-6.2h-4.9v19.8a4.16 4.16 0 1 1-4.16-4.16c.42 0 .83.06 1.21.18v-5.1a9.24 9.24 0 1 0 8.05 9.16v-9.8a13.5 13.5 0 0 0 7.3 2.14v-4.94a8.6 8.6 0 0 1-2.5-1.06z" fill="#fff"/><path d="M32.5 13.2a8.6 8.6 0 0 1-5-6.2h1.1a8.6 8.6 0 0 0 5 6.2z" fill="#25f4ee"/></svg>
+          </span>
+          <div class="ad-text">
+            <div class="ad-title">TikTok Pr&hellip;</div>
+            <div class="ad-sub">Scroll, Lik&hellip;</div>
+          </div>
+          <button class="ad-install">INSTALL NOW</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ______ REPORTS LIST ______ -->
+    <section id="screen-reports" class="screen hidden">
+      <div class="tabs" id="report-tabs">
+        <button class="tab tab-active" data-tab="daily">DAILY</button>
+        <button class="tab" data-tab="weekly">WEEKLY</button>
+        <button class="tab" data-tab="monthly">MONTHLY</button>
+      </div>
+      <div class="report-list" id="report-list"></div>
+    </section>
+
+    <!-- ______ DAY DETAIL ______ -->
+    <section id="screen-daydetail" class="screen hidden">
+      <div class="detail-card detail-cyan" id="open-timeline">
+        <div class="dc-left">
+          <div class="dc-label">Usage:</div>
+          <div class="dc-big" id="dd-usage">2h 33m</div>
+          <div class="dc-label dc-label2">Unlock:</div>
+          <div class="dc-big" id="dd-unlock">37 times</div>
+        </div>
+        <svg class="dc-phone" viewBox="0 0 64 96" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round">
+          <rect x="6" y="4" width="52" height="88" rx="8"/>
+          <path d="M22 12h20" stroke-width="4"/>
+          <circle cx="32" cy="84" r="2.6" fill="#fff" stroke="none"/>
+          <circle cx="23" cy="38" r="3.4" fill="#fff" stroke="none"/>
+          <circle cx="41" cy="38" r="3.4" fill="#fff" stroke="none"/>
+          <path d="M20 52c3.6 6.4 20.4 6.4 24 0" stroke-width="4.4"/>
+        </svg>
+      </div>
+
+      <div class="detail-card detail-red">
+        <svg class="peak-icon" viewBox="0 0 44 72" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round">
+          <rect x="3" y="3" width="38" height="66" rx="7"/>
+          <path d="M22 18c5 6 9 10 9 16a9 9 0 0 1-18 0c0-6 4-10 9-16z" fill="#f4511e" stroke="none"/>
+          <path d="M22 28c2.4 3 4.3 4.9 4.3 7.8a4.3 4.3 0 0 1-8.6 0c0-2.9 1.9-4.8 4.3-7.8z" fill="#ffcc80" stroke="none"/>
+          <circle cx="22" cy="61" r="2.2" fill="#fff" stroke="none"/>
+        </svg>
+        <div class="peak-text">
+          <div class="peak-title">Peak Usage</div>
+          <div class="peak-range">06:00 AM - 08:00 AM</div>
+        </div>
+      </div>
+
+      <div class="card total-card">
+        <div class="total-title">Total Screen Time</div>
+        <div class="total-value">2h 35m</div>
+        <p class="total-note">&bull; Total Screen time is the overall time spent on the phone including unmonitored apps, system apps, launcher screen etc.</p>
+      </div>
+
+      <div class="card ad-card ad-card2">
+        <span class="ad-flag">&#9654;</span>
+        <div class="ad-row">
+          <span class="ad-icon">
+            <svg viewBox="0 0 48 48"><rect width="48" height="48" rx="8" fill="#8ecbe8"/><circle cx="24" cy="20" r="9" fill="#f9c97c"/><path d="M15 14l4-6 5 4 5-4 4 6z" fill="#e8b23c"/><path d="M10 42c2-9 8-14 14-14s12 5 14 14z" fill="#3b5f8a"/></svg>
+          </span>
+          <div class="ad-text">
+            <div class="ad-chip">Ad</div>
+            <div class="ad-title">Kingshot</div>
+          </div>
+          <button class="ad-install">INSTALL</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ______ TIMELINE ______ -->
+    <section id="screen-timeline" class="screen hidden">
+      <div class="tabs tabs-half">
+        <button class="tab tab-active">What's Been &hellip;</button>
+        <button class="tab">Sneak Throu&hellip;</button>
+      </div>
+      <div class="timeline" id="timeline"></div>
+    </section>
+
+    <!-- ______ FOCUS ______ -->
+    <section id="screen-focus" class="screen hidden">
+      <p class="focus-intro">Silence the noise. Block distracting apps and focus on what actually matters today.</p>
+      <div class="focus-head">
+        <span class="focus-heading">Block Reels &amp; Shorts</span>
+        <span class="pro-pill">PRO</span>
+      </div>
+      <div id="focus-list"></div>
+      <div class="focus-heading how-heading">How It Works</div>
+      <p class="focus-intro">Enable a blocker above. When you open a blocked short-video feed, YourHour gently closes it and brings you back to what matters.</p>
+    </section>
+
+    <!-- ______ CHALLENGES ______ -->
+    <section id="screen-challenges" class="screen hidden">
+      <div class="card simple-card">
+        <div class="card-title">No-Phone Challenge</div>
+        <p class="chart-caption left">&bull; Keep your phone untouched and earn badges. Longest streak: 42m.</p>
+        <button class="ad-install start-btn">START</button>
+      </div>
+      <div class="card simple-card">
+        <div class="card-title">Digital Sunset</div>
+        <p class="chart-caption left">&bull; No screen time after 10:00 PM. Completed 3 of 7 days this week.</p>
+        <button class="ad-install start-btn">START</button>
+      </div>
+    </section>
+
+    <!-- ______ STORIES ______ -->
+    <section id="screen-stories" class="screen hidden">
+      <div class="card simple-card">
+        <div class="card-title">Your Week in Review</div>
+        <p class="chart-caption left">&bull; You reduced your usage by 64% today compared to yesterday. Keep it up!</p>
+      </div>
+      <div class="card simple-card">
+        <div class="card-title">Addiction Level</div>
+        <p class="chart-caption left">&bull; Current level: Achiever. You use your phone less than 71% of YourHour users.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ BOTTOM NAV ============ -->
+  <nav id="bottomnav">
+    <button class="nav-item" data-screen="challenges">
+      <span class="nav-pill">
+        <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17.8 5.4A9 9 0 1 0 21 12.3"/><circle cx="19.2" cy="6.6" r="1.3" fill="currentColor" stroke="none"/></svg>
+      </span>
+      <span class="nav-label">Challe&hellip;</span>
+    </button>
+    <button class="nav-item" data-screen="stories">
+      <span class="nav-pill">
+        <svg class="nav-ic" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8.2C11.2 6.9 9.8 6 8.3 6 6 6 4.2 7.8 4.2 10c0 3 2.6 5 7.8 8.6 5.2-3.6 7.8-5.6 7.8-8.6 0-2.2-1.8-4-4.1-4-1.5 0-2.9.9-3.7 2.2z"/><path d="M3 20.5h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </span>
+      <span class="nav-label">Stories</span>
+    </button>
+    <button class="nav-item nav-active" data-screen="dashboard">
+      <span class="nav-pill">
+        <svg class="nav-ic" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
+      </span>
+      <span class="nav-label">Dash&hellip;</span>
+    </button>
+    <button class="nav-item" data-screen="reports">
+      <span class="nav-pill">
+        <svg class="nav-ic" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="13" width="2.8" height="7" rx="0.6"/><rect x="8.6" y="10" width="2.8" height="10" rx="0.6"/><rect x="13.2" y="12" width="2.8" height="8" rx="0.6"/><rect x="17.8" y="8" width="2.8" height="12" rx="0.6"/><path d="M4 8.5l5.5-3 4 2.5L19 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19.5 7.6V4.2h-3.4z"/></svg>
+      </span>
+      <span class="nav-label">Reports</span>
+    </button>
+    <button class="nav-item" data-screen="focus">
+      <span class="nav-pill">
+        <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6z"/><path d="M10 14v-4.6a1 1 0 0 1 2 0V13M12 13v-4.4a1 1 0 0 1 2 0V13M14 13v-3.2a1 1 0 0 1 2 0V14a4 4 0 0 1-4 4 4.4 4.4 0 0 1-3.6-1.9L8 13.6a1 1 0 0 1 1.6-1.1l.4.5"/></svg>
+      </span>
+      <span class="nav-label">Focus</span>
+    </button>
+  </nav>
+
+  <!-- ============ ANDROID NAV BAR ============ -->
+  <div id="androidnav">
+    <svg viewBox="0 0 24 24" fill="#fff"><path d="M16.5 5v14L7 12z"/></svg>
+    <svg viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="12" r="7.5"/></svg>
+    <svg viewBox="0 0 24 24" fill="#fff"><rect x="5.5" y="5.5" width="13" height="13" rx="1.5"/></svg>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
