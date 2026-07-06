@@ -1,0 +1,58 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Bundle the web app (repo root) into the APK's assets
+def webAssetsDir = layout.buildDirectory.dir('generated/webassets')
+tasks.register('copyWebAssets', Copy) {
+    from(rootProject.projectDir.parentFile) {
+        include 'index.html', 'style.css', 'app.js', 'manifest.webmanifest'
+        include 'fonts/**', 'icons/**'
+    }
+    into webAssetsDir
+}
+
+android {
+    namespace 'com.yourhour.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.yourhour.app'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file('keystore.jks')
+            storePassword 'yourhour'
+            keyAlias 'yourhour'
+            keyPassword 'yourhour'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += webAssetsDir.get().asFile
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+preBuild.dependsOn copyWebAssets

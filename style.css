@@ -347,7 +347,11 @@ body {
   overflow: hidden;
 }
 .appdot:first-child { margin-left: 0; }
-.appdot svg { width: 100%; height: 100%; }
+.appdot svg, .appdot img { width: 100%; height: 100%; border-radius: 50%; }
+
+/* inside the Android app the system provides real status/navigation bars */
+body.native #statusbar, body.native #androidnav { display: none; }
+body.native #phone { max-width: none; height: 100vh; }
 .tl-expand { width: 15px; height: 15px; margin-left: 4px; color: #bdbdbd; }
 .tl-right { width: 118px; flex: 0 0 118px; text-align: right; font-size: 21px; color: #fff; }
 .tl-right.dim { color: #e0e0e0; }

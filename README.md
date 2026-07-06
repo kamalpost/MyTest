@@ -1,4 +1,28 @@
-# YourHour — Phone Usage Tracker (PWA replica)
+# YourHour — Phone Usage Tracker
+
+## Android APK (real usage measurement)
+
+The `android/` project wraps the pixel-matched UI in a native app that reads
+**real device usage** through `UsageStatsManager`:
+
+- screen time today + past 7 days, per-30-minute buckets
+- unlock counts (keyguard-hidden events)
+- per-category minutes (Social / Games / Media / Productivity / Custom from
+  each app's declared category)
+- hour-by-hour timeline with the actual app icons and time per app
+- daily report cards with day-over-day deltas
+
+GitHub Actions builds the APK on every push (`Build Android APK` workflow):
+download **YourHour.apk** from the workflow artifacts or from the
+`apk-latest` release. Install it (allow unknown sources), open the app, tap
+the banner / Screen Time button and grant **Usage Access** — the dashboards
+switch from the sample dataset to your live data.
+
+To build locally instead: open `android/` in Android Studio or run
+`./gradlew assembleRelease` (signed with the bundled demo keystore
+`android/keystore.jks`, password `yourhour`).
+
+## Web app (PWA replica)
 
 A pixel-matched recreation of the YourHour phone-usage app, built from device
 screenshots as a self-contained, installable Progressive Web App. Open it on a

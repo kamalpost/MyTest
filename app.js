@@ -52,10 +52,84 @@ var DATA = {
   ]
 };
 
+/* ---------------- native bridge (Android APK) ----------------
+   When running inside the Android app, window.YourHourNative provides
+   real UsageStatsManager data which replaces the sample dataset. */
+
+function fmtHM(mins) {
+  mins = Math.max(0, Math.round(mins));
+  return Math.floor(mins / 60) + 'H ' + (mins % 60) + 'M';
+}
+function fmtHm(mins) {
+  mins = Math.max(0, Math.round(mins));
+  return mins >= 60 ? Math.floor(mins / 60) + 'h ' + String(mins % 60).padStart(2, '0') + 'm' : mins + 'm';
+}
+function pctDelta(cur, prev) {
+  if (prev > 0) return Math.round((cur - prev) / prev * 100);
+  return cur > 0 ? 100 : 0;
+}
+
+var NATIVE = window.YourHourNative || null;
+var nativeGranted = false;
+
+function applyNativeData() {
+  if (!NATIVE) return false;
+  try { nativeGranted = NATIVE.hasPermission(); } catch (e) { return false; }
+  window.__nativeGranted = nativeGranted;
+  if (!nativeGranted) return false;
+  var snap;
+  try { snap = JSON.parse(NATIVE.getSnapshot()); } catch (e) { return false; }
+  if (!snap || !snap.granted) return false;
+
+  DATA.todayMinutes = Math.round(snap.todayMinutes);
+  DATA.todayUnlocks = snap.unlocks;
+  DATA.hourly = snap.hourly;
+  DATA.week = snap.week.map(function (w) {
+    return { label: w.label, mins: w.mins, today: w.label === 'TODAY' };
+  });
+
+  var c = snap.categories;
+  DATA.categories = [
+    { name: 'Social',       mins: c.social,       label: fmtHm(c.social),       color: '#f15f79' },
+    { name: 'Games',        mins: c.games,        label: fmtHm(c.games),        color: '#3a7bd5' },
+    { name: 'Media',        mins: c.media,        label: fmtHm(c.media),        color: '#e73827' },
+    { name: 'Productivity', mins: c.productivity, label: fmtHm(c.productivity), color: '#71c075' },
+    { name: 'Custom',       mins: c.custom,       label: fmtHm(c.custom),       color: '#bdbdbd' }
+  ];
+
+  var days = snap.days; // oldest first
+  var list = [];
+  for (var i = days.length - 1; i > 0; i--) {
+    list.push({
+      num: days[i].num, date: days[i].date,
+      usage: fmtHm(days[i].mins),
+      ud: pctDelta(days[i].mins, days[i - 1].mins),
+      unlock: days[i].unlocks,
+      kd: pctDelta(days[i].unlocks, days[i - 1].unlocks)
+    });
+  }
+  DATA.days = list;
+  DATA.nativeTimeline = snap.timeline;
+
+  // reflect live values in the static parts of the dashboard
+  document.querySelector('.rl-left .v-green').textContent = fmtHM(DATA.todayMinutes);
+  document.querySelector('.rl-left .v-dim').textContent = '/' + fmtHM(DATA.goalMinutes);
+  document.querySelector('.rl-right .v-cyan').textContent = DATA.todayUnlocks;
+  document.querySelector('.rl-right .v-dim').textContent = '/' + DATA.unlockGoal;
+  return true;
+}
+
 /* small app-icon builders (approximations of real launcher icons) */
 function appIcon(kind) {
   var d = document.createElement('span');
   d.className = 'appdot';
+  if (kind && kind.img) {
+    var img = document.createElement('img');
+    img.src = kind.img;
+    img.alt = kind.name || '';
+    d.appendChild(img);
+    return d;
+  }
   var map = {
     whatsapp: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#25d366"/><path d="M12 5.4a6.5 6.5 0 0 0-5.6 9.8L5.5 18l2.9-.86A6.5 6.5 0 1 0 12 5.4zm3.3 8.9c-.15.4-.85.77-1.2.8-.32.03-.72.04-2.3-.63-1.94-.83-3.16-2.85-3.26-2.98-.1-.13-.78-1.06-.78-2.03 0-.96.5-1.43.67-1.62.18-.2.38-.24.5-.24l.37.01c.12 0 .28-.05.44.33l.6 1.5c.05.12.09.25.01.4l-.24.38-.35.38c-.1.1-.22.22-.1.44.13.22.57.95 1.22 1.53.84.76 1.55 1 1.77 1.1.22.1.35.1.48-.05l.72-.85c.17-.22.31-.16.52-.1l1.36.65c.22.1.36.16.42.26.05.1.05.55-.1.94z" fill="#fff"/></svg>',
     chrome: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#fff"/><circle cx="12" cy="12" r="4.2" fill="#4285f4"/><circle cx="12" cy="12" r="5.3" fill="none" stroke="#fff" stroke-width="1"/><path d="M12 2a10 10 0 0 1 8.66 5H12a5 5 0 0 0-4.55 2.93z" fill="#ea4335"/><path d="M3.34 7A10 10 0 0 0 10 21.8l4.32-7.5A5 5 0 0 1 7.45 9.93z" fill="#34a853"/><path d="M20.66 7A10 10 0 0 1 10 21.8l4.33-7.48A5 5 0 0 0 17 7z" fill="#fbbc05"/></svg>',
@@ -146,19 +220,19 @@ function drawRings() {
   el('circle', { cx: c, cy: c, r: rInner, fill: 'none', stroke: '#2c2c2c', 'stroke-width': w }, svg);
   el('circle', { cx: c, cy: c, r: 70, fill: '#232323' }, svg);
 
-  var unlockDeg = 360 * DATA.todayUnlocks / DATA.unlockGoal;   // 266°
+  var unlockDeg = Math.min(359.9, 360 * DATA.todayUnlocks / DATA.unlockGoal);
   el('path', { d: arcPath(c, c, rOuter, 0, unlockDeg), fill: 'none', stroke: '#0097a7',
                'stroke-width': w, 'stroke-linecap': 'round' }, svg);
   var pe = polar(c, c, rOuter, unlockDeg);
   el('circle', { cx: pe[0], cy: pe[1], r: 7, fill: '#0097a7' }, svg);
 
-  var useDeg = 360 * DATA.todayMinutes / DATA.goalMinutes;      // 240°
+  var useDeg = Math.min(359.9, 360 * DATA.todayMinutes / DATA.goalMinutes);
   el('path', { d: arcPath(c, c, rInner, 0, useDeg), fill: 'none', stroke: '#81c784',
                'stroke-width': w, 'stroke-linecap': 'round' }, svg);
   var pg = polar(c, c, rInner, useDeg);
   el('circle', { cx: pg[0], cy: pg[1], r: 7, fill: '#81c784' }, svg);
 
-  var left = DATA.goalMinutes - DATA.todayMinutes;
+  var left = Math.max(0, DATA.goalMinutes - DATA.todayMinutes);
   var t1 = el('text', { x: c, y: c - 5, 'text-anchor': 'middle', fill: '#81c784',
     'font-size': '31', 'font-weight': '700', 'font-family': "'Open Sans',sans-serif" }, svg);
   t1.textContent = Math.floor(left / 60) + 'H ' + (left % 60) + 'M';
@@ -198,7 +272,9 @@ function drawDonut() {
   t1.textContent = 'USAGE';
   var t2 = el('text', { x: c, y: c + 19, 'text-anchor': 'middle', fill: '#fff',
     'font-size': '22', 'font-weight': '800', 'font-family': "'Open Sans',sans-serif" }, svg);
-  t2.textContent = '2H 33M';
+  var catTotal = 0;
+  DATA.categories.forEach(function (x) { catTotal += x.mins; });
+  t2.textContent = DATA.nativeTimeline ? fmtHM(catTotal) : '2H 33M';
   $('#donut').appendChild(svg);
 
   var legend = $('#cat-legend');
@@ -218,9 +294,11 @@ function drawHourly() {
   var W = 360, H = 170, padL = 30, padB = 26, padT = 8;
   var plotW = W - padL - 6, plotH = H - padB - padT;
   var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H });
-  var maxY = 33;
+  var maxV = Math.max.apply(null, DATA.hourly.concat([1]));
+  var step = Math.max(10, Math.ceil(maxV / 33) * 10);
+  var maxY = step * 3.3;
 
-  [0, 10, 20, 30].forEach(function (v) {
+  [0, step, step * 2, step * 3].forEach(function (v) {
     var y = padT + plotH * (1 - v / maxY);
     el('line', { x1: padL, y1: y, x2: W - 4, y2: y, stroke: '#2e2e2e', 'stroke-width': 1 }, svg);
     var t = el('text', { x: padL - 8, y: y + 5, 'text-anchor': 'end', fill: '#e0e0e0',
@@ -251,14 +329,16 @@ function drawWeekly() {
   var W = 360, H = 190, padL = 38, padB = 24, padT = 20;
   var plotW = W - padL - 8, plotH = H - padB - padT;
   var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H });
-  var maxY = 441;
+  var maxV = DATA.goalMinutes;
+  DATA.week.forEach(function (d) { maxV = Math.max(maxV, d.mins); });
+  var maxY = Math.round(maxV * 1.012);
 
   var grad = el('linearGradient', { id: 'wg', x1: 0, y1: 0, x2: 0, y2: 1 }, svg);
   el('stop', { offset: '0', 'stop-color': '#81c784' }, grad);
   el('stop', { offset: '1', 'stop-color': '#55aa59' }, grad);
 
   el('line', { x1: padL, y1: padT, x2: padL, y2: padT + plotH, stroke: '#3a3a3a', 'stroke-width': 1 }, svg);
-  [0, 110, 220, 330, 441].forEach(function (v) {
+  [0, Math.floor(maxY / 4), Math.floor(maxY / 2), Math.floor(maxY * 3 / 4), maxY].forEach(function (v) {
     var y = padT + plotH * (1 - v / maxY);
     var t = el('text', { x: padL - 7, y: y + 5, 'text-anchor': 'end', fill: '#e0e0e0',
       'font-size': '14', 'font-family': "'Open Sans',sans-serif" }, svg);
@@ -336,9 +416,34 @@ $$('#report-tabs .tab').forEach(function (t) {
 
 /* ---------------- timeline ---------------- */
 
+function fmtSecsShort(secs) {
+  secs = Math.round(secs);
+  if (secs >= 3600) {
+    return Math.floor(secs / 3600) + 'h ' + String(Math.floor(secs % 3600 / 60)).padStart(2, '0') + 'm';
+  }
+  return Math.floor(secs / 60) + 'm ' + String(secs % 60).padStart(2, '0') + 's';
+}
+function hourLabel(h) {
+  var ampm = h < 12 ? 'AM' : 'PM';
+  var hr = h % 12 === 0 ? 12 : h % 12;
+  return String(hr).padStart(2, '0') + ':00 ' + ampm;
+}
+
 function renderTimeline() {
   var wrap = $('#timeline');
-  TIMELINE.forEach(function (row) {
+  wrap.innerHTML = '';
+  var rows = TIMELINE;
+  if (DATA.nativeTimeline) {
+    rows = DATA.nativeTimeline.map(function (r, h) {
+      if (!r.apps.length || r.secs < 30) return { t: hourLabel(h), happy: true };
+      return {
+        t: hourLabel(h),
+        apps: r.apps.map(function (a) { return { img: a.icon, name: a.name }; }),
+        d: fmtSecsShort(r.secs)
+      };
+    });
+  }
+  rows.forEach(function (row) {
     var r = document.createElement('div');
     r.className = 'tl-row';
     var mid, right;
@@ -395,8 +500,10 @@ var APPBARS = {
   daydetail: 'appbar-daydetail', timeline: 'appbar-timeline'
 };
 var NAV_FOR = { daydetail: 'reports', timeline: 'reports' };
+var currentScreen = 'dashboard';
 
 function showScreen(name) {
+  currentScreen = name;
   $$('.screen').forEach(function (s) { s.classList.add('hidden'); });
   $$('.appbar').forEach(function (a) { a.classList.add('hidden'); });
   $('#screen-' + name).classList.remove('hidden');
@@ -415,6 +522,21 @@ $$('.nav-item').forEach(function (n) {
 $('#appbar-daydetail .ic-back').addEventListener('click', function () { showScreen('reports'); });
 $('#appbar-timeline .ic-back').addEventListener('click', function () { showScreen('daydetail'); });
 $('#open-timeline').addEventListener('click', function () { showScreen('timeline'); });
+
+/* Android hardware/gesture back */
+window.onNativeBack = function () {
+  if (currentScreen === 'timeline') { showScreen('daydetail'); return true; }
+  if (currentScreen === 'daydetail') { showScreen('reports'); return true; }
+  if (currentScreen !== 'dashboard') { showScreen('dashboard'); return true; }
+  return false;
+};
+
+/* Called by MainActivity.onResume — pick up a freshly granted permission */
+window.onNativeResume = function () {
+  if (NATIVE && !nativeGranted) {
+    try { if (NATIVE.hasPermission()) location.reload(); } catch (e) {}
+  }
+};
 
 /* ---------------- real usage tracking (web session) ----------------
    Measures how long this app is actually on screen and how many times
@@ -456,15 +578,34 @@ function fmtSecs(s) {
   return Math.floor(m / 60) + 'h ' + (m % 60) + 'm ' + Math.floor(s % 60) + 's';
 }
 $('#btn-screentime').addEventListener('click', function () {
+  if (NATIVE && !nativeGranted) { NATIVE.openUsageAccess(); return; }
+  if (nativeGranted) { alert('Screen time today: ' + fmtHm(DATA.todayMinutes)); return; }
   var t = usage[dayKey()] || { seconds: 0, opens: 0 };
   alert('Measured time in this app today: ' + fmtSecs(t.seconds));
 });
 $('#btn-unlockcount').addEventListener('click', function () {
+  if (NATIVE && !nativeGranted) { NATIVE.openUsageAccess(); return; }
+  if (nativeGranted) { alert('Unlocks today: ' + DATA.todayUnlocks); return; }
   var t = usage[dayKey()] || { seconds: 0, opens: 0 };
   alert('Times this app came to the foreground today: ' + t.opens);
 });
 
 /* ---------------- boot ---------------- */
+
+if (NATIVE) document.body.classList.add('native'); // real status/nav bars exist
+applyNativeData();
+
+/* On-device without usage access yet: turn the promo banner into a
+   permission prompt so real data is one tap away. */
+if (NATIVE && !nativeGranted) {
+  var bt = document.querySelector('#banner-badge .banner-title');
+  var bb = document.querySelector('#banner-badge .banner-bottom');
+  bt.textContent = 'Grant Usage Access!!';
+  bb.innerHTML = 'Open Settings&nbsp;&nbsp;<span class="arr">&#8594;</span>';
+  document.querySelector('#banner-badge').addEventListener('click', function () {
+    NATIVE.openUsageAccess();
+  });
+}
 
 drawRings();
 drawRingApps();

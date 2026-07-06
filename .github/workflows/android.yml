@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [claude/phone-usage-app-yloaeh, main]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk YourHour.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: YourHour-apk
+          path: YourHour.apk
+
+      - name: Publish release with APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="apk-latest"
+          gh release delete "$TAG" --yes || true
+          git push origin ":refs/tags/$TAG" || true
+          gh release create "$TAG" YourHour.apk \
+            --title "YourHour APK (build ${{ github.run_number }})" \
+            --notes "Installable Android APK built from ${{ github.sha }}. Download YourHour.apk, allow installs from unknown sources, then open it and grant Usage Access when prompted."
