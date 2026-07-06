@@ -24,6 +24,8 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
+        // Ignore the system font-scale so the UI renders at design size
+        s.setTextZoom(100);
         webView.setBackgroundColor(Color.parseColor("#121212"));
         webView.setWebViewClient(new WebViewClient());
         webView.addJavascriptInterface(new UsageStatsBridge(this), "YourHourNative");

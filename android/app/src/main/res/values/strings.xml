@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">YourHour</string>
+    <string name="accessibility_desc">Lets YourHour close Reels, Shorts and Spotlight feeds you have chosen to block on the Focus tab. YourHour only watches YouTube, Instagram, Snapchat and Facebook, and never collects or transmits what is on your screen.</string>
+</resources>

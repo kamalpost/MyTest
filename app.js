@@ -169,13 +169,13 @@ var TIMELINE = [
 ];
 
 var FOCUS = [
-  { name: 'YouTube Shorts',
+  { key: 'youtube', name: 'YouTube Shorts',
     icon: '<svg viewBox="0 0 24 24"><rect x="1.5" y="4.5" width="21" height="15" rx="4" fill="#f00"/><path d="M10 9l6 3-6 3z" fill="#fff"/></svg>' },
-  { name: 'Instagram Reels',
+  { key: 'instagram', name: 'Instagram Reels',
     icon: '<svg viewBox="0 0 24 24"><defs><linearGradient id="ig" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#fd5"/><stop offset=".4" stop-color="#ff543e"/><stop offset=".7" stop-color="#c837ab"/><stop offset="1" stop-color="#5b51d8"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="6" fill="url(#ig)"/><rect x="6.4" y="6.4" width="11.2" height="11.2" rx="3.4" fill="none" stroke="#fff" stroke-width="1.7"/><circle cx="12" cy="12" r="2.7" fill="none" stroke="#fff" stroke-width="1.7"/><circle cx="16.1" cy="7.9" r="1.05" fill="#fff"/></svg>' },
-  { name: 'Snapchat Spotlight',
+  { key: 'snapchat', name: 'Snapchat Spotlight',
     icon: '<svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" fill="#fffc00"/><path d="M12 5.2c2.3 0 3.9 1.7 3.9 4l-.02 1.9c.5.25 1-.45 1.6-.15.5.24.35.9-.2 1.16-.5.24-1.3.4-1.1 1.15.35 1.3 1.8 2.2 2.7 2.4-.06.5-1.2.86-1.9.94-.1.3-.16.72-.4.8-.55.2-1.3-.2-2 .06-.6.23-1.1 1.14-2.58 1.14S10 17.7 9.42 17.46c-.7-.27-1.45.14-2-.06-.24-.08-.3-.5-.4-.8-.7-.08-1.84-.44-1.9-.94.9-.2 2.35-1.1 2.7-2.4.2-.75-.6-.9-1.1-1.15-.55-.27-.7-.92-.2-1.16.6-.3 1.1.4 1.6.15L8.1 9.2c0-2.3 1.6-4 3.9-4z" fill="#fff" stroke="#000" stroke-width=".4"/></svg>' },
-  { name: 'Facebook Reels',
+  { key: 'facebook', name: 'Facebook Reels',
     icon: '<svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="6" fill="#1877f2"/><path d="M15.5 12.5H13.3V19h-2.7v-6.5H8.9V10h1.7V8.6c0-1.9 1-3 3-3 .8 0 1.5.06 1.8.1v2.1h-1.2c-.9 0-1 .4-1 1V10h2.4z" fill="#fff"/></svg>' }
 ];
 
@@ -472,6 +472,15 @@ function renderTimeline() {
 
 function renderFocus() {
   var wrap = $('#focus-list');
+  wrap.innerHTML = '';
+  var states = {}, serviceOn = false;
+  if (NATIVE && NATIVE.getBlocks) {
+    try {
+      var b = JSON.parse(NATIVE.getBlocks());
+      states = b.blocks || {};
+      serviceOn = !!b.serviceEnabled;
+    } catch (e) {}
+  }
   FOCUS.forEach(function (f, i) {
     var card = document.createElement('div');
     card.className = 'focus-card';
@@ -484,9 +493,30 @@ function renderFocus() {
       '<div class="focus-sub">Turned off</div>';
     var input = card.querySelector('input');
     var sub = card.querySelector('.focus-sub');
+    input.checked = !!states[f.key];
+    function refresh() {
+      if (!input.checked) {
+        sub.textContent = 'Turned off';
+        sub.style.color = '#757575';
+      } else if (NATIVE && !serviceOn) {
+        sub.textContent = 'Tap to enable YourHour in Accessibility settings';
+        sub.style.color = '#ffab00';
+      } else {
+        sub.textContent = 'Blocking is active';
+        sub.style.color = '#4dd0e1';
+      }
+    }
+    refresh();
     input.addEventListener('change', function () {
-      sub.textContent = input.checked ? 'Blocking is active' : 'Turned off';
-      sub.style.color = input.checked ? '#4dd0e1' : '#757575';
+      if (NATIVE && NATIVE.setBlock) {
+        NATIVE.setBlock(f.key, input.checked);
+        serviceOn = NATIVE.isAccessibilityEnabled();
+        if (input.checked && !serviceOn) NATIVE.openAccessibilitySettings();
+      }
+      refresh();
+    });
+    sub.addEventListener('click', function () {
+      if (NATIVE && input.checked && !serviceOn) NATIVE.openAccessibilitySettings();
     });
     wrap.appendChild(card);
   });
@@ -531,11 +561,13 @@ window.onNativeBack = function () {
   return false;
 };
 
-/* Called by MainActivity.onResume — pick up a freshly granted permission */
+/* Called by MainActivity.onResume — pick up freshly granted permissions */
 window.onNativeResume = function () {
-  if (NATIVE && !nativeGranted) {
-    try { if (NATIVE.hasPermission()) location.reload(); } catch (e) {}
+  if (!NATIVE) return;
+  if (!nativeGranted) {
+    try { if (NATIVE.hasPermission()) { location.reload(); return; } } catch (e) {}
   }
+  renderFocus(); // accessibility service may have been toggled in Settings
 };
 
 /* ---------------- real usage tracking (web session) ----------------

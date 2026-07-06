@@ -58,6 +58,46 @@ public class UsageStatsBridge {
         activity.startActivity(i);
     }
 
+    /* ---- Focus blockers ---- */
+
+    @JavascriptInterface
+    public void setBlock(String key, boolean enabled) {
+        activity.getSharedPreferences(BlockerService.PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(key, enabled).apply();
+    }
+
+    @JavascriptInterface
+    public String getBlocks() {
+        try {
+            android.content.SharedPreferences p =
+                    activity.getSharedPreferences(BlockerService.PREFS, Context.MODE_PRIVATE);
+            JSONObject blocks = new JSONObject();
+            for (String k : new String[]{"youtube", "instagram", "snapchat", "facebook"}) {
+                blocks.put(k, p.getBoolean(k, false));
+            }
+            JSONObject out = new JSONObject();
+            out.put("blocks", blocks);
+            out.put("serviceEnabled", isAccessibilityEnabled());
+            return out.toString();
+        } catch (JSONException e) {
+            return "{}";
+        }
+    }
+
+    @JavascriptInterface
+    public boolean isAccessibilityEnabled() {
+        String enabled = Settings.Secure.getString(activity.getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        return enabled != null && enabled.contains(activity.getPackageName() + "/");
+    }
+
+    @JavascriptInterface
+    public void openAccessibilitySettings() {
+        Intent i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        activity.startActivity(i);
+    }
+
     /** Full data snapshot for the UI, as a JSON string. */
     @JavascriptInterface
     public String getSnapshot() {
