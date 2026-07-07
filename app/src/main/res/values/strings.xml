@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SP500 Swing Scanner</string>
-    <string name="subtitle">RSI · 20/50-day MA · Volume — daily data via Yahoo Finance</string>
+    <string name="subtitle">RSI · MA 20/50 · Volume · Yahoo Finance daily data</string>
     <string name="filter_all">All</string>
     <string name="filter_buys">Buy Setups</string>
     <string name="filter_oversold">Oversold</string>
