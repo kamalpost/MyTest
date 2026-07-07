@@ -30,8 +30,8 @@ sed "s|<manifest |<manifest package=\"$PKG\" |" "$SRC/AndroidManifest.xml" > "$O
     -I "$ANDROID_JAR" \
     --manifest "$OUT/AndroidManifest.xml" \
     -A "$SRC/assets" \
-    --min-sdk-version 26 --target-sdk-version 29 \
-    --version-code 3 --version-name 1.2 \
+    --min-sdk-version 26 --target-sdk-version 34 \
+    --version-code 4 --version-name 1.2.1 \
     --java "$OUT/gen" \
     --auto-add-overlay \
     "$OUT/res.zip"

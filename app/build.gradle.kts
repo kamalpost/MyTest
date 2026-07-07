@@ -10,9 +10,9 @@ android {
     defaultConfig {
         applicationId = "com.swingtrader.sp500"
         minSdk = 26
-        targetSdk = 29
-        versionCode = 3
-        versionName = "1.2"
+        targetSdk = 34
+        versionCode = 4
+        versionName = "1.2.1"
     }
 
     // Same key as build-apk.sh so Gradle- and script-built APKs can update

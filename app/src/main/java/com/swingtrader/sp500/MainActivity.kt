@@ -98,6 +98,7 @@ class MainActivity : Activity() {
         )
         AlertJobService.ensureChannel(this)
         AlertScheduler.sync(this)
+        requestNotificationPermissionIfNeeded()
 
         progress = findViewById(R.id.progress)
         txtProgress = findViewById(R.id.txtProgress)
@@ -137,6 +138,18 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         worker.shutdownNow()
+    }
+
+    /**
+     * targetSdk 33+ makes notifications an opt-in runtime permission. The
+     * literal string is used because this project compiles against API 30.
+     */
+    private fun requestNotificationPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT < 33) return
+        val perm = "android.permission.POST_NOTIFICATIONS"
+        if (checkSelfPermission(perm) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(perm), 100)
+        }
     }
 
     /** Loads the bundled CSV with the user's add/remove edits applied. */
