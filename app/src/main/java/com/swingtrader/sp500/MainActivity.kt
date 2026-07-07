@@ -90,10 +90,7 @@ class MainActivity : Activity() {
         settings = Settings(applicationContext)
         universe = UserUniverseStore(applicationContext)
         adapter = IdeaAdapter(
-            decisions,
-            journal,
             onClick = { idea -> DetailSheet.show(this, idea, ::onDecision) },
-            onDecision = ::onDecision,
             onLongClick = ::confirmRemoveFromUniverse
         )
         AlertJobService.ensureChannel(this)

@@ -6,17 +6,15 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.TextView
 import com.swingtrader.sp500.R
-import com.swingtrader.sp500.data.DecisionStore
-import com.swingtrader.sp500.data.JournalStore
-import com.swingtrader.sp500.model.Decision
 import com.swingtrader.sp500.model.Idea
 import com.swingtrader.sp500.model.Signal
 
+/**
+ * Idea cards. Deliberately display-only: take/skip actions and position
+ * status live in the detail sheet (tap a card), keeping the list clean.
+ */
 class IdeaAdapter(
-    private val decisions: DecisionStore,
-    private val journal: JournalStore,
     private val onClick: (Idea) -> Unit,
-    private val onDecision: (Idea, Decision) -> Unit,
     private val onLongClick: (Idea) -> Unit
 ) : BaseAdapter() {
 
@@ -50,7 +48,7 @@ class IdeaAdapter(
         val view = convertView ?: LayoutInflater.from(parent.context)
             .inflate(R.layout.item_idea, parent, false)
             .also { it.tag = VH(it) }
-        (view.tag as VH).bind(getItem(position), decisions, journal, onClick, onDecision, onLongClick)
+        (view.tag as VH).bind(getItem(position), onClick, onLongClick)
         return view
     }
 
@@ -67,18 +65,8 @@ class IdeaAdapter(
         val ma50: TextView = item.findViewById(R.id.txtMa50)
         val vol: TextView = item.findViewById(R.id.txtVol)
         val reason: TextView = item.findViewById(R.id.txtReason)
-        val decision: TextView = item.findViewById(R.id.txtDecision)
-        val btnTake: TextView = item.findViewById(R.id.btnTake)
-        val btnSkip: TextView = item.findViewById(R.id.btnSkip)
 
-        fun bind(
-            idea: Idea,
-            decisions: DecisionStore,
-            journal: JournalStore,
-            onClick: (Idea) -> Unit,
-            onDecision: (Idea, Decision) -> Unit,
-            onLongClick: (Idea) -> Unit
-        ) {
+        fun bind(idea: Idea, onClick: (Idea) -> Unit, onLongClick: (Idea) -> Unit) {
             val ctx = root.context
             fun color(id: Int) = ctx.getColor(id)
 
@@ -118,28 +106,6 @@ class IdeaAdapter(
             )
 
             reason.text = idea.reason
-
-            when (decisions.get(idea)) {
-                Decision.TAKEN -> {
-                    val pos = journal.positionFor(idea.constituent.symbol)
-                    if (pos != null && pos.entry > 0) {
-                        val pl = (idea.price - pos.entry) / pos.entry * 100.0
-                        decision.text = "✓ TAKEN @ $${Format.price(pos.entry)} · ${Format.pct(pl)}"
-                        decision.setTextColor(color(if (pl >= 0) R.color.gain else R.color.loss))
-                    } else {
-                        decision.text = "✓ IN YOUR SELECTIONS"
-                        decision.setTextColor(color(R.color.gain))
-                    }
-                }
-                Decision.SKIPPED -> {
-                    decision.text = "✕ SKIPPED"
-                    decision.setTextColor(color(R.color.loss))
-                }
-                Decision.NONE -> decision.text = ""
-            }
-
-            btnTake.setOnClickListener { onDecision(idea, Decision.TAKEN) }
-            btnSkip.setOnClickListener { onDecision(idea, Decision.SKIPPED) }
             root.setOnClickListener { onClick(idea) }
             root.setOnLongClickListener { onLongClick(idea); true }
         }

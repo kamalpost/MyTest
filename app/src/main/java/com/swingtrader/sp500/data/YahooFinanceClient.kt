@@ -121,22 +121,35 @@ object YahooFinanceClient {
     @Synchronized
     private fun ensureCrumb(): String? {
         crumb?.let { return it }
-        return try {
-            if (CookieHandler.getDefault() == null) {
-                CookieHandler.setDefault(CookieManager(null, CookiePolicy.ACCEPT_ALL))
-            }
-            // Any yahoo.com hit sets the session cookies (the 404 body is irrelevant).
-            try { get("https://fc.yahoo.com") } catch (_: Exception) {}
-            val c = get("https://query1.finance.yahoo.com/v1/test/getcrumb")?.trim()
-            if (c.isNullOrEmpty() || c.length > 32 || c.contains('{')) null
-            else { crumb = c; c }
-        } catch (_: Exception) {
-            null
+        if (CookieHandler.getDefault() == null) {
+            CookieHandler.setDefault(CookieManager(null, CookiePolicy.ACCEPT_ALL))
         }
+        // Seed session cookies (fc.yahoo.com's 404 still sets them; the full
+        // site is the backup), then ask either query host for the crumb.
+        for (seed in listOf("https://fc.yahoo.com", "https://finance.yahoo.com")) {
+            try { get(seed) } catch (_: Exception) {}
+            for (host in HOSTS) {
+                val c = try { get("https://$host/v1/test/getcrumb")?.trim() } catch (_: Exception) { null }
+                if (!c.isNullOrEmpty() && c.length <= 32 && !c.contains('{')) {
+                    crumb = c
+                    return c
+                }
+            }
+        }
+        return null
     }
 
-    /** Batched quote lookup. Returns whatever subset Yahoo answers for. */
+    /**
+     * Batched quote lookup with a crumb-free per-symbol fallback. Returns
+     * whatever subset Yahoo answers for.
+     */
     fun fetchFundamentals(symbols: List<String>): Map<String, Fundamentals> {
+        val quick = quoteBatch(symbols)
+        if (quick.isNotEmpty()) return quick
+        return timeseriesFallback(symbols)
+    }
+
+    private fun quoteBatch(symbols: List<String>): Map<String, Fundamentals> {
         val out = HashMap<String, Fundamentals>(symbols.size)
         if (symbols.isEmpty()) return out
         val cr = ensureCrumb()
@@ -170,5 +183,65 @@ object YahooFinanceClient {
             }
         }
         return out
+    }
+
+    /**
+     * Crumb-free fallback: the fundamentals-timeseries endpoint serves
+     * trailing P/E and P/B per symbol. Slower (one call per symbol, 10-way
+     * concurrent) but works when the quote API rejects the crumb. EPS is
+     * derived later as price / P/E.
+     */
+    private fun timeseriesFallback(symbols: List<String>): Map<String, Fundamentals> {
+        val out = java.util.concurrent.ConcurrentHashMap<String, Fundamentals>()
+        if (symbols.isEmpty()) return out
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(10)
+        try {
+            val now = System.currentTimeMillis() / 1000
+            val from = now - 450L * 24 * 3600
+            val futures = symbols.map { sym ->
+                pool.submit {
+                    try {
+                        val enc = URLEncoder.encode(sym, "UTF-8")
+                        for (host in HOSTS) {
+                            val url = "https://$host/ws/fundamentals-timeseries/v1/finance/timeseries/$enc" +
+                                "?symbol=$enc&type=trailingPeRatio,trailingPbRatio" +
+                                "&period1=$from&period2=$now&merge=false&padTimeSeries=true"
+                            val body = get(url) ?: continue
+                            val res = JSONObject(body)
+                                .optJSONObject("timeseries")
+                                ?.optJSONArray("result") ?: continue
+                            var pe = Double.NaN
+                            var pb = Double.NaN
+                            for (i in 0 until res.length()) {
+                                val r = res.getJSONObject(i)
+                                lastReported(r, "trailingPeRatio")?.let { pe = it }
+                                lastReported(r, "trailingPbRatio")?.let { pb = it }
+                            }
+                            if (!pe.isNaN() || !pb.isNaN()) {
+                                out[sym] = Fundamentals(Double.NaN, pe, pb)
+                            }
+                            break
+                        }
+                    } catch (_: Exception) {
+                        // symbol stays unmapped
+                    }
+                }
+            }
+            futures.forEach { f -> try { f.get() } catch (_: Exception) {} }
+        } finally {
+            pool.shutdown()
+        }
+        return out
+    }
+
+    private fun lastReported(result: JSONObject, key: String): Double? {
+        val arr = result.optJSONArray(key) ?: return null
+        for (i in arr.length() - 1 downTo 0) {
+            val v = arr.optJSONObject(i)
+                ?.optJSONObject("reportedValue")
+                ?.optDouble("raw", Double.NaN)
+            if (v != null && !v.isNaN()) return v
+        }
+        return null
     }
 }

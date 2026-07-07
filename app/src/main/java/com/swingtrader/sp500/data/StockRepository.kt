@@ -104,7 +104,15 @@ class StockRepository(private val context: Context) {
         }
         if (f.isEmpty()) return ideas
         return ideas.map { i ->
-            f[i.constituent.symbol]?.let { q -> i.copy(eps = q.eps, pe = q.pe, pb = q.pb) } ?: i
+            f[i.constituent.symbol]?.let { q ->
+                // The timeseries fallback has no EPS field; derive it from P/E.
+                val eps = when {
+                    !q.eps.isNaN() -> q.eps
+                    q.pe > 0 -> i.price / q.pe
+                    else -> Double.NaN
+                }
+                i.copy(eps = eps, pe = q.pe, pb = q.pb)
+            } ?: i
         }
     }
 }
