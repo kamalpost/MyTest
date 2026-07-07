@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#0D1117</color>
+    <color name="surface">#161B22</color>
+    <color name="surface_variant">#1C2330</color>
+    <color name="stroke">#2A3140</color>
+
+    <color name="text_primary">#E6EDF3</color>
+    <color name="text_secondary">#8B98A5</color>
+
+    <color name="accent">#4C8DFF</color>
+    <color name="gain">#2EBD85</color>
+    <color name="loss">#F6465D</color>
+    <color name="warn">#F0B90B</color>
+    <color name="neutral">#8B98A5</color>
+
+    <color name="gain_dim">#1A2EBD85</color>
+    <color name="loss_dim">#1AF6465D</color>
+    <color name="warn_dim">#1AF0B90B</color>
+    <color name="neutral_dim">#1A8B98A5</color>
+    <color name="accent_dim">#1A4C8DFF</color>
+</resources>

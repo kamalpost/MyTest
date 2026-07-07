@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SP500 Swing Scanner</string>
+    <string name="subtitle">RSI · 20/50-day MA · Volume — daily data via Yahoo Finance</string>
+    <string name="filter_all">All</string>
+    <string name="filter_buys">Buy Setups</string>
+    <string name="filter_oversold">Oversold</string>
+    <string name="filter_pullback">Pullbacks</string>
+    <string name="filter_breakout">Breakouts</string>
+    <string name="filter_overbought">Overbought</string>
+    <string name="filter_bearish">Bearish</string>
+    <string name="scanning">Scanning…</string>
+    <string name="rescan">⟳ RESCAN</string>
+    <string name="pull_to_scan">Scan starts automatically — tap ⟳ RESCAN to refresh</string>
+    <string name="disclaimer">Educational tool — not financial advice. Signals are computed from daily Yahoo Finance data and can be delayed or wrong. Always do your own research.</string>
+</resources>
