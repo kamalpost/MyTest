@@ -13,4 +13,18 @@
     <string name="rescan">⟳ RESCAN</string>
     <string name="pull_to_scan">Scan starts automatically — tap ⟳ RESCAN to refresh</string>
     <string name="disclaimer">Educational tool — not financial advice. Signals are computed from daily Yahoo Finance data and can be delayed or wrong. Always do your own research.</string>
+    <string name="filters">☰ FILTERS</string>
+    <string name="filters_title">Screening filters</string>
+    <string name="filters_cap">MARKET CAP (approx., relative to S&amp;P 500)</string>
+    <string name="filters_sector">SECTOR</string>
+    <string name="filters_rsi">RSI RANGE</string>
+    <string name="filters_rvol">MIN RELATIVE VOLUME (vs 20d avg)</string>
+    <string name="filters_price">PRICE RANGE ($)</string>
+    <string name="filters_price_min">min</string>
+    <string name="filters_price_max">max</string>
+    <string name="filters_reset">Reset all</string>
+    <string name="filters_apply">Apply</string>
+    <string name="filters_clear_decisions">Clear all ✓ taken / ✕ skipped marks</string>
+    <string name="take">✓ TAKE</string>
+    <string name="skip">✕ SKIP</string>
 </resources>

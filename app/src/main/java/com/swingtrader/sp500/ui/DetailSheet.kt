@@ -7,12 +7,13 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.TextView
 import com.swingtrader.sp500.R
+import com.swingtrader.sp500.model.Decision
 import com.swingtrader.sp500.model.Idea
 
 /** Bottom-sheet style dialog built on the plain framework Dialog. */
 object DetailSheet {
 
-    fun show(context: Context, idea: Idea) {
+    fun show(context: Context, idea: Idea, onDecision: (Idea, Decision) -> Unit) {
         val dialog = Dialog(context)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.sheet_detail)
@@ -26,7 +27,8 @@ object DetailSheet {
         fun tv(id: Int) = dialog.findViewById<TextView>(id)!!
 
         tv(R.id.dSymbol).text = idea.constituent.symbol
-        tv(R.id.dName).text = "${idea.constituent.name} · ${idea.constituent.sector}"
+        tv(R.id.dName).text = "${idea.constituent.name} · ${idea.constituent.sector}" +
+            " · $${Format.capB(idea.constituent.capB)}"
         tv(R.id.dPrice).text = "$" + Format.price(idea.price)
         tv(R.id.dChange).apply {
             text = Format.pct(idea.changePct1d) + " today"
@@ -69,6 +71,15 @@ object DetailSheet {
                     else -> "No edge right now — keep on watchlist and wait for a pullback toward the 20-day MA ($${Format.price(idea.sma20)})."
                 }
             )
+        }
+
+        tv(R.id.dBtnTake).setOnClickListener {
+            onDecision(idea, Decision.TAKEN)
+            dialog.dismiss()
+        }
+        tv(R.id.dBtnSkip).setOnClickListener {
+            onDecision(idea, Decision.SKIPPED)
+            dialog.dismiss()
         }
 
         dialog.show()

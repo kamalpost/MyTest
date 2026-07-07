@@ -27,8 +27,13 @@ class StockRepository(private val context: Context) {
         context.assets.open("sp500.csv").bufferedReader().useLines { lines ->
             lines.forEach { line ->
                 if (line.isBlank() || line.startsWith("#")) return@forEach
-                val parts = line.split(',', limit = 3)
-                if (parts.size == 3) out.add(Constituent(parts[0].trim(), parts[1].trim(), parts[2].trim()))
+                val parts = line.split(',', limit = 4)
+                if (parts.size == 4) out.add(
+                    Constituent(
+                        parts[0].trim(), parts[1].trim(), parts[2].trim(),
+                        parts[3].trim().toDoubleOrNull() ?: 15.0
+                    )
+                )
             }
         }
         return out

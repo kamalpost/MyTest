@@ -27,15 +27,30 @@ The constituent list (~490 symbols with names/sectors) ships in
 
 - **Market header** — S&P 500 index (^GSPC) price, day change, sparkline,
   index RSI and MA20/MA50 levels, plus market breadth from the scan
-  (buy setups / bearish counts / % of stocks above the 50-day MA).
-- **Filter chips** — All · Buy Setups · Oversold · Pullbacks · Breakouts ·
-  Overbought · Bearish.
-- **Idea cards** — ticker, price and day change, signal badge with a 0–100
-  conviction score, 3-month sparkline with MA20/MA50 overlays, RSI /
-  MA-position / relative-volume pills, and a one-line rationale.
+  (buy setups / bearish counts / % of stocks above the 50-day MA) and the
+  last-scan time.
+- **Signal chips** — All · Buy Setups · Oversold · Pullbacks · Breakouts ·
+  Overbought · Bearish · ✓ Selected · ✕ Skipped.
+- **☰ FILTERS sheet** — screen by market-cap bucket (mega ≥$200B, large
+  $50–200B, mid $20–50B, small <$20B — approximate values bundled in the CSV,
+  relative to the S&P 500 universe), sector, RSI min–max sliders, minimum
+  relative volume, and price range. The button shows how many filter groups
+  are active.
+- **Idea cards** — ticker, market cap, price and day change, signal badge with
+  a 0–100 conviction score, 3-month sparkline with MA20/MA50 overlays, RSI /
+  MA-position / relative-volume pills, a one-line rationale, and **✓ TAKE /
+  ✕ SKIP** buttons.
 - **Detail sheet** (tap a card) — full stats (RSI, MAs, RVOL, 20d avg volume,
-  ATR(14), 3-month range) and an ATR-based swing plan (entry / stop at
-  1.5×ATR / target at 2.5×ATR).
+  ATR(14), 3-month range), an ATR-based swing plan (entry / stop at 1.5×ATR /
+  target at 2.5×ATR), and take/skip actions.
+- **Take / skip decisions** — skipped ideas disappear from the main views
+  (they live under ✕ Skipped); taken ideas are your personal watchlist under
+  ✓ Selected. Decisions persist across restarts and auto-expire when the
+  stock's signal changes. "Clear all marks" lives in the filter sheet.
+- **Offline cache** — every completed scan is saved to app storage and
+  restored instantly on launch; the app only auto-rescans if the cache is
+  older than an hour. If Yahoo throttles part of a rescan, symbols that
+  failed keep their previous data instead of vanishing.
 - **⟳ RESCAN** re-scans all symbols (10 concurrent requests, live progress).
 
 ## Signal rules

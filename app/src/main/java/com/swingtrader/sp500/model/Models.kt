@@ -1,11 +1,34 @@
 package com.swingtrader.sp500.model
 
+/** Size buckets relative to the S&P 500 universe (approx cap in $B). */
+enum class CapCategory(val label: String) {
+    MEGA("Mega ≥200B"),
+    LARGE("Large 50–200B"),
+    MID("Mid 20–50B"),
+    SMALL("Small <20B");
+
+    companion object {
+        fun of(capB: Double): CapCategory = when {
+            capB >= 200 -> MEGA
+            capB >= 50 -> LARGE
+            capB >= 20 -> MID
+            else -> SMALL
+        }
+    }
+}
+
+/** User's decision on a presented trade idea. */
+enum class Decision { NONE, TAKEN, SKIPPED }
+
 /** Static info about an index constituent, loaded from assets/sp500.csv. */
 data class Constituent(
     val symbol: String,
     val name: String,
-    val sector: String
-)
+    val sector: String,
+    val capB: Double
+) {
+    val capCategory: CapCategory get() = CapCategory.of(capB)
+}
 
 /** Daily OHLCV history for one symbol (oldest first). */
 data class History(

@@ -40,13 +40,28 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/btnFilters"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_button"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/filters"
+            android:textColor="@color/accent"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
             android:id="@+id/btnRescan"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
+            android:layout_marginStart="8dp"
             android:background="@drawable/bg_button"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:paddingTop="8dp"
             android:paddingBottom="8dp"
             android:text="@string/rescan"

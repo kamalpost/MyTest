@@ -6,10 +6,16 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.TextView
 import com.swingtrader.sp500.R
+import com.swingtrader.sp500.data.DecisionStore
+import com.swingtrader.sp500.model.Decision
 import com.swingtrader.sp500.model.Idea
 import com.swingtrader.sp500.model.Signal
 
-class IdeaAdapter(private val onClick: (Idea) -> Unit) : BaseAdapter() {
+class IdeaAdapter(
+    private val decisions: DecisionStore,
+    private val onClick: (Idea) -> Unit,
+    private val onDecision: (Idea, Decision) -> Unit
+) : BaseAdapter() {
 
     companion object {
         fun signalColors(signal: Signal): Pair<Int, Int> = when (signal.bullish) {
@@ -41,7 +47,7 @@ class IdeaAdapter(private val onClick: (Idea) -> Unit) : BaseAdapter() {
         val view = convertView ?: LayoutInflater.from(parent.context)
             .inflate(R.layout.item_idea, parent, false)
             .also { it.tag = VH(it) }
-        (view.tag as VH).bind(getItem(position), onClick)
+        (view.tag as VH).bind(getItem(position), decisions, onClick, onDecision)
         return view
     }
 
@@ -58,13 +64,22 @@ class IdeaAdapter(private val onClick: (Idea) -> Unit) : BaseAdapter() {
         val ma50: TextView = item.findViewById(R.id.txtMa50)
         val vol: TextView = item.findViewById(R.id.txtVol)
         val reason: TextView = item.findViewById(R.id.txtReason)
+        val decision: TextView = item.findViewById(R.id.txtDecision)
+        val btnTake: TextView = item.findViewById(R.id.btnTake)
+        val btnSkip: TextView = item.findViewById(R.id.btnSkip)
 
-        fun bind(idea: Idea, onClick: (Idea) -> Unit) {
+        fun bind(
+            idea: Idea,
+            decisions: DecisionStore,
+            onClick: (Idea) -> Unit,
+            onDecision: (Idea, Decision) -> Unit
+        ) {
             val ctx = root.context
             fun color(id: Int) = ctx.getColor(id)
 
             symbol.text = idea.constituent.symbol
-            name.text = "${idea.constituent.name} · ${idea.constituent.sector}"
+            name.text = "${idea.constituent.name} · ${idea.constituent.sector}" +
+                " · $${Format.capB(idea.constituent.capB)}"
             price.text = "$" + Format.price(idea.price)
             change.text = Format.pct(idea.changePct1d)
             change.setTextColor(color(if (idea.changePct1d >= 0) R.color.gain else R.color.loss))
@@ -97,6 +112,21 @@ class IdeaAdapter(private val onClick: (Idea) -> Unit) : BaseAdapter() {
             )
 
             reason.text = idea.reason
+
+            when (decisions.get(idea)) {
+                Decision.TAKEN -> {
+                    decision.text = "✓ IN YOUR SELECTIONS"
+                    decision.setTextColor(color(R.color.gain))
+                }
+                Decision.SKIPPED -> {
+                    decision.text = "✕ SKIPPED"
+                    decision.setTextColor(color(R.color.loss))
+                }
+                Decision.NONE -> decision.text = ""
+            }
+
+            btnTake.setOnClickListener { onDecision(idea, Decision.TAKEN) }
+            btnSkip.setOnClickListener { onDecision(idea, Decision.SKIPPED) }
             root.setOnClickListener { onClick(idea) }
         }
     }
