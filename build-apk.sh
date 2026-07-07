@@ -10,6 +10,9 @@ set -euo pipefail
 TOOLS=${TOOLS:-/opt/buildtools}
 ANDROID_JAR=${ANDROID_JAR:-/opt/android-sdk/platforms/android-30/android.jar}
 SRC=app/src/main
+# APPID = installed package name (fresh id, see app/build.gradle.kts);
+# PKG = Kotlin/R source package, unchanged.
+APPID=com.swingtrader.scanner
 PKG=com.swingtrader.sp500
 OUT=build-manual
 # The keystore must live OUTSIDE $OUT and be reused forever: Android rejects
@@ -24,15 +27,16 @@ echo "==> aapt2 compile"
 
 echo "==> aapt2 link"
 # The manifest keeps AGP-style namespace (no package attr); inject it for aapt2.
-sed "s|<manifest |<manifest package=\"$PKG\" |" "$SRC/AndroidManifest.xml" > "$OUT/AndroidManifest.xml"
+sed "s|<manifest |<manifest package=\"$APPID\" |" "$SRC/AndroidManifest.xml" > "$OUT/AndroidManifest.xml"
 "$TOOLS/aapt2" link \
     -o "$OUT/app.unsigned.apk" \
     -I "$ANDROID_JAR" \
     --manifest "$OUT/AndroidManifest.xml" \
     -A "$SRC/assets" \
     --min-sdk-version 26 --target-sdk-version 34 \
-    --version-code 4 --version-name 1.2.1 \
+    --version-code 5 --version-name 1.2.2 \
     --java "$OUT/gen" \
+    --custom-package "$PKG" \
     --auto-add-overlay \
     "$OUT/res.zip"
 

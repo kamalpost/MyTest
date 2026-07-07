@@ -13,8 +13,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SwingScanner">
 
+        <!-- Fully-qualified class names: the applicationId (manifest package)
+             differs from the Kotlin package, so relative names won't resolve. -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.swingtrader.sp500.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,7 +25,7 @@
         </activity>
 
         <service
-            android:name=".alerts.AlertJobService"
+            android:name="com.swingtrader.sp500.alerts.AlertJobService"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
     </application>

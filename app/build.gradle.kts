@@ -8,11 +8,14 @@ android {
     compileSdk = 30
 
     defaultConfig {
-        applicationId = "com.swingtrader.sp500"
+        // Fresh application id (code stays in com.swingtrader.sp500): early
+        // builds were signed with throwaway keys, and any leftover install of
+        // them blocks every update. A new id can never conflict.
+        applicationId = "com.swingtrader.scanner"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.2.1"
+        versionCode = 5
+        versionName = "1.2.2"
     }
 
     // Same key as build-apk.sh so Gradle- and script-built APKs can update
