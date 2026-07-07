@@ -84,7 +84,8 @@ class IdeaAdapter(
 
             symbol.text = idea.constituent.symbol
             name.text = "${idea.constituent.name} · ${idea.constituent.sector}" +
-                " · $${Format.capB(idea.constituent.capB)}"
+                " · $${Format.capB(idea.constituent.capB)}" +
+                if (idea.pe > 0) " · P/E ${Format.one(idea.pe)}" else ""
             price.text = "$" + Format.price(idea.price)
             change.text = Format.pct(idea.changePct1d)
             change.setTextColor(color(if (idea.changePct1d >= 0) R.color.gain else R.color.loss))

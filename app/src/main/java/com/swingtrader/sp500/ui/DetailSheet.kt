@@ -64,6 +64,9 @@ object DetailSheet {
                         if (idea.bbSqueeze) "  (squeeze)" else ""
                 )
             }
+            appendLine("EPS (ttm)      ${if (idea.eps.isNaN()) "—" else "$" + Format.two(idea.eps)}")
+            appendLine("P/E (trailing) ${if (idea.pe > 0) Format.one(idea.pe) else "—"}")
+            appendLine("P/B            ${if (idea.pb > 0) Format.two(idea.pb) else "—"}")
             appendLine("Volume         ${Format.volume(idea.lastVol.toDouble())}  (${Format.one(idea.rvol)}× 20d avg)")
             appendLine("20d avg vol    ${Format.volume(idea.avgVol20)}")
             appendLine("Vol trend 5/20 ${Format.two(idea.volTrend)}×")

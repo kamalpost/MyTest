@@ -17,6 +17,8 @@ class FilterState {
     var priceMax = 0.0       // 0 = off
     var macdBullOnly = false
     var squeezeOnly = false
+    var peMax = 0.0          // 0 = off; when set, requires 0 < P/E <= peMax
+    var pbMax = 0.0          // 0 = off; when set, requires 0 < P/B <= pbMax
 
     fun matches(idea: Idea): Boolean {
         if (caps.isNotEmpty() && idea.constituent.capCategory !in caps) return false
@@ -27,6 +29,10 @@ class FilterState {
         if (priceMax > 0 && idea.price > priceMax) return false
         if (macdBullOnly && !(idea.macdBullCross || idea.macdHist > 0)) return false
         if (squeezeOnly && !idea.bbSqueeze) return false
+        // Valuation caps also exclude unknown (NaN) and negative values —
+        // "P/E under 25" shouldn't surface loss-makers or unpriced symbols.
+        if (peMax > 0 && !(idea.pe > 0 && idea.pe <= peMax)) return false
+        if (pbMax > 0 && !(idea.pb > 0 && idea.pb <= pbMax)) return false
         return true
     }
 
@@ -39,6 +45,8 @@ class FilterState {
         if (priceMin > 0 || priceMax > 0) n++
         if (macdBullOnly) n++
         if (squeezeOnly) n++
+        if (peMax > 0) n++
+        if (pbMax > 0) n++
         return n
     }
 
@@ -52,5 +60,7 @@ class FilterState {
         priceMax = 0.0
         macdBullOnly = false
         squeezeOnly = false
+        peMax = 0.0
+        pbMax = 0.0
     }
 }

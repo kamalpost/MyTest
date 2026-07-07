@@ -37,6 +37,9 @@
     <string name="filters_universe">UNIVERSE</string>
     <string name="hint_ticker">ticker e.g. SHOP</string>
     <string name="btn_add">＋ ADD</string>
+    <string name="filters_valuation">VALUATION (blank = off)</string>
+    <string name="hint_pe_max">max P/E</string>
+    <string name="hint_pb_max">max P/B</string>
     <string name="filters_data">DATA</string>
     <string name="btn_export">⇪ Export journal &amp; selections (CSV)</string>
     <string name="btn_clear_journal">Reset trade journal</string>

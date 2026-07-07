@@ -73,6 +73,11 @@ The constituent list (~490 symbols with names/sectors) ships in
 - **Custom universe** — add any Yahoo ticker in the filter sheet (validated
   against the API before it's added); long-press a card to remove a symbol
   from future scans.
+- **Fundamentals** — EPS (ttm), trailing P/E, and P/B fetched per scan from
+  Yahoo's quote API (cookie+crumb handshake, batched 100 symbols/call).
+  P/E shows on each card, all three in the detail sheet, and the filter
+  sheet has max-P/E / max-P/B caps (which also exclude loss-makers and
+  symbols Yahoo didn't answer for). Shown as "—" when unavailable.
 
 ## Signal rules
 

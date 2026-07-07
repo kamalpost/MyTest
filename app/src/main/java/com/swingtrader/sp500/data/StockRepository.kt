@@ -63,7 +63,7 @@ class StockRepository(private val context: Context) {
         val pool = Executors.newFixedThreadPool(CONCURRENCY)
         val done = AtomicInteger(0)
         val total = constituents.size
-        try {
+        val ideas = try {
             val futures = constituents.map { c ->
                 pool.submit(Callable {
                     val idea = try {
@@ -75,11 +75,36 @@ class StockRepository(private val context: Context) {
                     idea
                 })
             }
-            return futures.mapNotNull { f ->
+            futures.mapNotNull { f ->
                 try { f.get() } catch (_: Exception) { null }
             }
         } finally {
             pool.shutdown()
+        }
+        return mergeFundamentals(ideas)
+    }
+
+    /** Fetch + analyze + fundamentals for one symbol (used by add-ticker). */
+    fun analyzeSingle(c: Constituent): Idea? {
+        val idea = try {
+            YahooFinanceClient.fetchDailyHistory(c.symbol)?.let { SignalEngine.analyze(c, it) }
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        return mergeFundamentals(listOf(idea)).first()
+    }
+
+    /** Batched EPS/PE/PB lookup; ideas keep NaN fundamentals when it fails. */
+    private fun mergeFundamentals(ideas: List<Idea>): List<Idea> {
+        if (ideas.isEmpty()) return ideas
+        val f = try {
+            YahooFinanceClient.fetchFundamentals(ideas.map { it.constituent.symbol })
+        } catch (_: Exception) {
+            emptyMap()
+        }
+        if (f.isEmpty()) return ideas
+        return ideas.map { i ->
+            f[i.constituent.symbol]?.let { q -> i.copy(eps = q.eps, pe = q.pe, pb = q.pb) } ?: i
         }
     }
 }

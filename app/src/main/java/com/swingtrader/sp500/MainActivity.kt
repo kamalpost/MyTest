@@ -194,12 +194,7 @@ class MainActivity : Activity() {
         Toast.makeText(this, "Validating $symbol…", Toast.LENGTH_SHORT).show()
         worker.execute {
             val constituent = com.swingtrader.sp500.model.Constituent(symbol, symbol, "Custom", 15.0)
-            val idea = try {
-                com.swingtrader.sp500.data.YahooFinanceClient.fetchDailyHistory(symbol)
-                    ?.let { com.swingtrader.sp500.analysis.SignalEngine.analyze(constituent, it) }
-            } catch (_: Exception) {
-                null
-            }
+            val idea = repository.analyzeSingle(constituent)
             main.post {
                 if (idea == null) {
                     Toast.makeText(this, "Couldn't fetch $symbol — not added", Toast.LENGTH_LONG).show()

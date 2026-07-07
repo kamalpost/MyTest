@@ -3,6 +3,9 @@ package com.swingtrader.sp500.data
 import com.swingtrader.sp500.model.History
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.net.CookieHandler
+import java.net.CookieManager
+import java.net.CookiePolicy
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -103,4 +106,69 @@ object YahooFinanceClient {
     }
 
     private fun highsOr(value: Double, fallback: Double) = if (value.isNaN()) fallback else value
+
+    // ---------------------------------------------------------------------
+    // Fundamentals (EPS / P/E / P/B) via the v7 quote API. Unlike the chart
+    // endpoint this one requires Yahoo's cookie + crumb handshake — the same
+    // dance yfinance performs. All failures degrade to an empty map.
+    // ---------------------------------------------------------------------
+
+    data class Fundamentals(val eps: Double, val pe: Double, val pb: Double)
+
+    @Volatile
+    private var crumb: String? = null
+
+    @Synchronized
+    private fun ensureCrumb(): String? {
+        crumb?.let { return it }
+        return try {
+            if (CookieHandler.getDefault() == null) {
+                CookieHandler.setDefault(CookieManager(null, CookiePolicy.ACCEPT_ALL))
+            }
+            // Any yahoo.com hit sets the session cookies (the 404 body is irrelevant).
+            try { get("https://fc.yahoo.com") } catch (_: Exception) {}
+            val c = get("https://query1.finance.yahoo.com/v1/test/getcrumb")?.trim()
+            if (c.isNullOrEmpty() || c.length > 32 || c.contains('{')) null
+            else { crumb = c; c }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Batched quote lookup. Returns whatever subset Yahoo answers for. */
+    fun fetchFundamentals(symbols: List<String>): Map<String, Fundamentals> {
+        val out = HashMap<String, Fundamentals>(symbols.size)
+        if (symbols.isEmpty()) return out
+        val cr = ensureCrumb()
+        val fields = "epsTrailingTwelveMonths,trailingPE,priceToBook"
+        symbols.chunked(100).forEach { batch ->
+            val syms = URLEncoder.encode(batch.joinToString(","), "UTF-8")
+            for (host in HOSTS) {
+                try {
+                    val url = "https://$host/v7/finance/quote?symbols=$syms&fields=$fields" +
+                        (cr?.let { "&crumb=${URLEncoder.encode(it, "UTF-8")}" } ?: "")
+                    val body = get(url) ?: continue
+                    val arr = JSONObject(body)
+                        .optJSONObject("quoteResponse")
+                        ?.optJSONArray("result") ?: continue
+                    for (i in 0 until arr.length()) {
+                        val q = arr.getJSONObject(i)
+                        val sym = q.optString("symbol")
+                        if (sym.isNotEmpty()) {
+                            out[sym] = Fundamentals(
+                                eps = q.optDouble("epsTrailingTwelveMonths", Double.NaN),
+                                pe = q.optDouble("trailingPE", Double.NaN),
+                                pb = q.optDouble("priceToBook", Double.NaN)
+                            )
+                        }
+                    }
+                    break
+                } catch (_: Exception) {
+                    // try next host; a failed crumb may also be stale
+                    crumb = null
+                }
+            }
+        }
+        return out
+    }
 }

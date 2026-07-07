@@ -34,7 +34,7 @@ sed "s|<manifest |<manifest package=\"$APPID\" |" "$SRC/AndroidManifest.xml" > "
     --manifest "$OUT/AndroidManifest.xml" \
     -A "$SRC/assets" \
     --min-sdk-version 26 --target-sdk-version 34 \
-    --version-code 6 --version-name 1.2.3 \
+    --version-code 7 --version-name 1.3.0 \
     --java "$OUT/gen" \
     --custom-package "$PKG" \
     --auto-add-overlay \

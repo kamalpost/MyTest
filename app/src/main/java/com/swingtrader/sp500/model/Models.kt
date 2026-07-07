@@ -80,7 +80,11 @@ data class Idea(
     val reason: String,
     val closes: DoubleArray,    // trailing closes for sparkline (oldest first)
     val sma20Series: DoubleArray,
-    val sma50Series: DoubleArray
+    val sma50Series: DoubleArray,
+    // Fundamentals from the v7 quote API; NaN when Yahoo didn't answer.
+    val eps: Double = Double.NaN,   // trailing-twelve-month EPS
+    val pe: Double = Double.NaN,    // trailing P/E
+    val pb: Double = Double.NaN     // price-to-book
 ) {
     val aboveSma20: Boolean get() = price >= sma20
     val aboveSma50: Boolean get() = price >= sma50

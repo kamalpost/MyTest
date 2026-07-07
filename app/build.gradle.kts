@@ -14,8 +14,8 @@ android {
         applicationId = "com.swingtrader.scanner"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.2.3"
+        versionCode = 7
+        versionName = "1.3.0"
     }
 
     // Same key as build-apk.sh so Gradle- and script-built APKs can update

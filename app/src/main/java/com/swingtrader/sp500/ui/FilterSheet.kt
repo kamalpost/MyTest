@@ -56,6 +56,8 @@ object FilterSheet {
         val sbRvol = dialog.findViewById<SeekBar>(R.id.sbRvol)!!
         val etMin = dialog.findViewById<EditText>(R.id.etPriceMin)!!
         val etMax = dialog.findViewById<EditText>(R.id.etPriceMax)!!
+        val etPeMax = dialog.findViewById<EditText>(R.id.etPeMax)!!
+        val etPbMax = dialog.findViewById<EditText>(R.id.etPbMax)!!
 
         fun chip(label: String, selected: Boolean, onToggle: (TextView) -> Unit): TextView {
             val c = TextView(context)
@@ -154,6 +156,8 @@ object FilterSheet {
         sbRvol.progress = (state.rvolMin * 10).toInt()
         if (state.priceMin > 0) etMin.setText(Format.two(state.priceMin))
         if (state.priceMax > 0) etMax.setText(Format.two(state.priceMax))
+        if (state.peMax > 0) etPeMax.setText(Format.one(state.peMax))
+        if (state.pbMax > 0) etPbMax.setText(Format.one(state.pbMax))
         renderRsi()
         renderRvol()
 
@@ -182,6 +186,8 @@ object FilterSheet {
             state.rvolMin = sbRvol.progress / 10.0
             state.priceMin = etMin.text.toString().toDoubleOrNull() ?: 0.0
             state.priceMax = etMax.text.toString().toDoubleOrNull() ?: 0.0
+            state.peMax = etPeMax.text.toString().toDoubleOrNull() ?: 0.0
+            state.pbMax = etPbMax.text.toString().toDoubleOrNull() ?: 0.0
             state.macdBullOnly = macdOnly
             state.squeezeOnly = squeezeOnly
             etAccount.text.toString().toDoubleOrNull()?.let { if (it > 0) settings.accountSize = it }
