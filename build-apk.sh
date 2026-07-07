@@ -12,7 +12,9 @@ ANDROID_JAR=${ANDROID_JAR:-/opt/android-sdk/platforms/android-30/android.jar}
 SRC=app/src/main
 PKG=com.swingtrader.sp500
 OUT=build-manual
-KEYSTORE=$OUT/debug.p12
+# The keystore must live OUTSIDE $OUT and be reused forever: Android rejects
+# updates signed with a different key than the installed app.
+KEYSTORE=keystore/debug.p12
 
 rm -rf "$OUT"
 mkdir -p "$OUT/gen" "$OUT/classes" "$OUT/dex"
@@ -64,9 +66,10 @@ EOF
 
 echo "==> keystore"
 if [ ! -f "$KEYSTORE" ]; then
+    mkdir -p "$(dirname "$KEYSTORE")"
     keytool -genkeypair -keystore "$KEYSTORE" -storetype PKCS12 \
         -storepass android -keypass android -alias debug \
-        -dname "CN=Android Debug,O=Android,C=US" \
+        -dname "CN=SP500 Swing Scanner Debug,O=SwingTrader,C=US" \
         -keyalg RSA -keysize 2048 -validity 10000
 fi
 

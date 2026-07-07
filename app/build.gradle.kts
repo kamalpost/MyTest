@@ -15,6 +15,17 @@ android {
         versionName = "1.2"
     }
 
+    // Same key as build-apk.sh so Gradle- and script-built APKs can update
+    // each other. A committed debug key is fine for a sideloaded personal app.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/debug.p12")
+            storePassword = "android"
+            keyAlias = "debug"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

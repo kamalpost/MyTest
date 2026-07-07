@@ -9,9 +9,12 @@ with a dark trading-terminal dashboard.
 
 ## Install
 
-A prebuilt, signed APK is committed at **`release/app-debug.apk`** (~630 KB).
+A prebuilt, signed APK is committed at **`release/app-debug.apk`** (~680 KB).
 Copy it to your phone (Android 8.0+), allow "install from unknown sources",
-and install. The first scan starts automatically and takes ~1–2 minutes
+and install. If a version from before 2026-07-07 is installed, uninstall it
+once first — earlier builds were signed with a throwaway key, so Android
+rejects the update ("App not installed"). From now on every build is signed
+with the committed `keystore/debug.p12`, so updates install straight over. The first scan starts automatically and takes ~1–2 minutes
 (≈490 network calls); Yahoo occasionally throttles — tap **⟳ RESCAN** to retry.
 
 ## Where the data comes from
