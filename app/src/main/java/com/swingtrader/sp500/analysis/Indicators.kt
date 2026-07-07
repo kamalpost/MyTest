@@ -82,6 +82,97 @@ object Indicators {
         return sum / period
     }
 
+    /** Exponential moving average (SMA-seeded, standard 2/(n+1) smoothing). */
+    fun ema(values: DoubleArray, period: Int): DoubleArray {
+        val out = DoubleArray(values.size) { Double.NaN }
+        if (values.size < period) return out
+        var sum = 0.0
+        for (i in 0 until period) sum += values[i]
+        var e = sum / period
+        out[period - 1] = e
+        val k = 2.0 / (period + 1)
+        for (i in period until values.size) {
+            e = values[i] * k + e * (1 - k)
+            out[i] = e
+        }
+        return out
+    }
+
+    /** MACD(12,26,9): returns Triple(macdLine, signalLine, histogram), input-aligned. */
+    fun macd(values: DoubleArray, fast: Int = 12, slow: Int = 26, signal: Int = 9):
+        Triple<DoubleArray, DoubleArray, DoubleArray> {
+        val n = values.size
+        val emaFast = ema(values, fast)
+        val emaSlow = ema(values, slow)
+        val macdLine = DoubleArray(n) { i ->
+            if (emaFast[i].isNaN() || emaSlow[i].isNaN()) Double.NaN else emaFast[i] - emaSlow[i]
+        }
+        // Signal line = EMA of the macd line, starting where macd becomes defined.
+        val signalLine = DoubleArray(n) { Double.NaN }
+        val start = slow - 1
+        if (n - start >= signal) {
+            var sum = 0.0
+            for (i in start until start + signal) sum += macdLine[i]
+            var e = sum / signal
+            signalLine[start + signal - 1] = e
+            val k = 2.0 / (signal + 1)
+            for (i in start + signal until n) {
+                e = macdLine[i] * k + e * (1 - k)
+                signalLine[i] = e
+            }
+        }
+        val hist = DoubleArray(n) { i ->
+            if (macdLine[i].isNaN() || signalLine[i].isNaN()) Double.NaN
+            else macdLine[i] - signalLine[i]
+        }
+        return Triple(macdLine, signalLine, hist)
+    }
+
+    /**
+     * Bollinger bands (20, 2σ) at the LAST bar plus a squeeze flag: bandwidth
+     * in the lowest quartile of its trailing [lookback] bars (volatility
+     * contraction that often precedes breakouts).
+     */
+    data class Bollinger(val upper: Double, val lower: Double, val mid: Double, val squeeze: Boolean)
+
+    fun bollinger(values: DoubleArray, period: Int = 20, mult: Double = 2.0, lookback: Int = 60): Bollinger? {
+        val n = values.size
+        if (n < period) return null
+
+        fun bandwidthAt(end: Int): Double {
+            var sum = 0.0
+            for (i in end - period + 1..end) sum += values[i]
+            val mean = sum / period
+            var vsum = 0.0
+            for (i in end - period + 1..end) {
+                val d = values[i] - mean
+                vsum += d * d
+            }
+            val sd = kotlin.math.sqrt(vsum / period)
+            return if (mean != 0.0) (2 * mult * sd) / mean else 0.0
+        }
+
+        val lastEnd = n - 1
+        var sum = 0.0
+        for (i in lastEnd - period + 1..lastEnd) sum += values[i]
+        val mid = sum / period
+        var vsum = 0.0
+        for (i in lastEnd - period + 1..lastEnd) {
+            val d = values[i] - mid
+            vsum += d * d
+        }
+        val sd = kotlin.math.sqrt(vsum / period)
+
+        val from = maxOf(period - 1, n - lookback)
+        val widths = ArrayList<Double>(n - from)
+        for (end in from..lastEnd) widths.add(bandwidthAt(end))
+        widths.sort()
+        val q1 = widths[widths.size / 4]
+        val squeeze = bandwidthAt(lastEnd) <= q1
+
+        return Bollinger(mid + mult * sd, mid - mult * sd, mid, squeeze)
+    }
+
     /**
      * Index (bars back from the end) where fast crossed over slow, or -1.
      * [up]=true looks for fast crossing above slow ("golden"), false for below.

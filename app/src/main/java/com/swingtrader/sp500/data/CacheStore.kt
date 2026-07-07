@@ -18,7 +18,7 @@ import java.io.File
 object CacheStore {
 
     private const val FILE_NAME = "scan_cache.json"
-    private const val VERSION = 2
+    private const val VERSION = 3
 
     data class Cached(
         val savedAt: Long,
@@ -60,6 +60,11 @@ object CacheStore {
                     put("atr", nz(i.atr14))
                     put("hi3m", i.hi3m)
                     put("lo3m", i.lo3m)
+                    put("macdHist", nz(i.macdHist))
+                    put("macdBull", i.macdBullCross)
+                    put("bbU", nz(i.bbUpper))
+                    put("bbL", nz(i.bbLower))
+                    put("bbSq", i.bbSqueeze)
                     put("signal", i.signal.name)
                     put("score", i.score)
                     put("reason", i.reason)
@@ -115,6 +120,11 @@ object CacheStore {
                         atr14 = o.optDouble("atr"),
                         hi3m = o.getDouble("hi3m"),
                         lo3m = o.getDouble("lo3m"),
+                        macdHist = o.optDouble("macdHist"),
+                        macdBullCross = o.optBoolean("macdBull"),
+                        bbUpper = o.optDouble("bbU"),
+                        bbLower = o.optDouble("bbL"),
+                        bbSqueeze = o.optBoolean("bbSq"),
                         signal = Signal.valueOf(o.getString("signal")),
                         score = o.getInt("score"),
                         reason = o.getString("reason"),

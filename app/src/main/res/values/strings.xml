@@ -27,4 +27,17 @@
     <string name="filters_clear_decisions">Clear all ✓ taken / ✕ skipped marks</string>
     <string name="take">✓ TAKE</string>
     <string name="skip">✕ SKIP</string>
+    <string name="filters_indicators">INDICATOR CONFIRMATION</string>
+    <string name="chip_macd">MACD bullish</string>
+    <string name="chip_squeeze">BB squeeze</string>
+    <string name="filters_portfolio">PORTFOLIO — position sizing &amp; alerts</string>
+    <string name="hint_account">account $</string>
+    <string name="hint_risk">risk % / trade</string>
+    <string name="chip_alerts">🔔 Price alerts</string>
+    <string name="filters_universe">UNIVERSE</string>
+    <string name="hint_ticker">ticker e.g. SHOP</string>
+    <string name="btn_add">＋ ADD</string>
+    <string name="filters_data">DATA</string>
+    <string name="btn_export">⇪ Export journal &amp; selections (CSV)</string>
+    <string name="btn_clear_journal">Reset trade journal</string>
 </resources>

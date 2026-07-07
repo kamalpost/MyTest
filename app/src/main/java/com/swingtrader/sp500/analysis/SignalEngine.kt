@@ -58,11 +58,34 @@ object SignalEngine {
         // Did price reclaim the 20-day MA in the last 3 bars? (breakout trigger)
         val priceCross20 = crossedAboveRecently(closes, sma20Series, 3)
 
+        val (macdLine, macdSignalLine, macdHistSeries) = Indicators.macd(closes)
+        val macdHist = macdHistSeries[n - 1]
+        val macdBullCross =
+            Indicators.barsSinceCross(macdLine, macdSignalLine, up = true, window = 5) >= 0
+        val bb = Indicators.bollinger(closes)
+
         val uptrend = sma20 > sma50
-        val (signal, score, reason) = classify(
+        var (signal, score, reason) = classify(
             price, rsi, sma20, sma50, uptrend, rvol, volTrend,
             goldenBars, deathBars, priceCross20, hi3m, changePct
         )
+
+        // Confirmation layer: MACD and Bollinger refine conviction, not direction.
+        if (signal.bullish == true) {
+            if (macdBullCross) {
+                score += 8
+                reason += " MACD just crossed bullish."
+            } else if (!macdHist.isNaN() && macdHist > 0) {
+                score += 4
+            }
+            if (bb?.squeeze == true) {
+                score += 5
+                reason += " Bollinger squeeze — volatility coiled."
+            }
+        } else if (signal.bullish == false && !macdHist.isNaN() && macdHist < 0) {
+            score += 5
+        }
+        score = score.coerceAtMost(100)
 
         val sparkFrom = n - min(n, SPARK_BARS)
         return Idea(
@@ -79,6 +102,11 @@ object SignalEngine {
             atr14 = atr,
             hi3m = hi3m,
             lo3m = lo3m,
+            macdHist = macdHist,
+            macdBullCross = macdBullCross,
+            bbUpper = bb?.upper ?: Double.NaN,
+            bbLower = bb?.lower ?: Double.NaN,
+            bbSqueeze = bb?.squeeze ?: false,
             signal = signal,
             score = score,
             reason = reason,

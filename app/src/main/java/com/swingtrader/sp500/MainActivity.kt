@@ -10,9 +10,16 @@ import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import android.app.AlertDialog
+import android.content.Intent
+import com.swingtrader.sp500.alerts.AlertJobService
+import com.swingtrader.sp500.alerts.AlertScheduler
 import com.swingtrader.sp500.data.CacheStore
 import com.swingtrader.sp500.data.DecisionStore
+import com.swingtrader.sp500.data.JournalStore
+import com.swingtrader.sp500.data.Settings
 import com.swingtrader.sp500.data.StockRepository
+import com.swingtrader.sp500.data.UserUniverseStore
 import com.swingtrader.sp500.model.Decision
 import com.swingtrader.sp500.model.Idea
 import com.swingtrader.sp500.model.MarketSnapshot
@@ -23,6 +30,9 @@ import com.swingtrader.sp500.ui.FilterState
 import com.swingtrader.sp500.ui.Format
 import com.swingtrader.sp500.ui.IdeaAdapter
 import com.swingtrader.sp500.ui.SparklineView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
@@ -49,6 +59,9 @@ class MainActivity : Activity() {
 
     private lateinit var repository: StockRepository
     private lateinit var decisions: DecisionStore
+    private lateinit var journal: JournalStore
+    private lateinit var settings: Settings
+    private lateinit var universe: UserUniverseStore
     private lateinit var adapter: IdeaAdapter
     private lateinit var header: View
     private lateinit var progress: ProgressBar
@@ -73,11 +86,18 @@ class MainActivity : Activity() {
 
         repository = StockRepository(applicationContext)
         decisions = DecisionStore(applicationContext)
+        journal = JournalStore(applicationContext)
+        settings = Settings(applicationContext)
+        universe = UserUniverseStore(applicationContext)
         adapter = IdeaAdapter(
             decisions,
+            journal,
             onClick = { idea -> DetailSheet.show(this, idea, ::onDecision) },
-            onDecision = ::onDecision
+            onDecision = ::onDecision,
+            onLongClick = ::confirmRemoveFromUniverse
         )
+        AlertJobService.ensureChannel(this)
+        AlertScheduler.sync(this)
 
         progress = findViewById(R.id.progress)
         txtProgress = findViewById(R.id.txtProgress)
@@ -97,9 +117,9 @@ class MainActivity : Activity() {
         // Restore the previous scan instantly, then only hit the network if stale.
         worker.execute {
             val cached = CacheStore.load(applicationContext)
-            val universe = repository.loadConstituents().size
+            val count = loadUniverse().size
             main.post {
-                universeSize = universe
+                universeSize = count
                 if (cached != null) {
                     allIdeas = cached.ideas
                     lastScanAt = cached.savedAt
@@ -119,25 +139,129 @@ class MainActivity : Activity() {
         worker.shutdownNow()
     }
 
+    /** Loads the bundled CSV with the user's add/remove edits applied. */
+    private fun loadUniverse() = universe.apply(repository.loadConstituents())
+
     private fun onDecision(idea: Idea, decision: Decision) {
+        val before = decisions.get(idea)
         decisions.toggle(idea, decision)
+        val after = decisions.get(idea)
+
+        val symbol = idea.constituent.symbol
+        if (before != Decision.TAKEN && after == Decision.TAKEN) {
+            journal.openPosition(idea)
+        } else if (before == Decision.TAKEN && after != Decision.TAKEN) {
+            journal.closePosition(symbol, idea.price)
+            journal.closedTrades().lastOrNull { it.symbol == symbol }?.let { t ->
+                Toast.makeText(this, "$symbol closed: ${Format.pct(t.plPct)}", Toast.LENGTH_SHORT).show()
+            }
+        }
+        AlertScheduler.sync(this)
+        bindBreadth()
         applyFilter()
+    }
+
+    private fun confirmRemoveFromUniverse(idea: Idea) {
+        val symbol = idea.constituent.symbol
+        AlertDialog.Builder(this)
+            .setTitle("Remove $symbol?")
+            .setMessage("$symbol will be excluded from future scans. You can re-add it in ☰ FILTERS → UNIVERSE.")
+            .setPositiveButton("Remove") { _, _ ->
+                universe.remove(symbol)
+                allIdeas = allIdeas.filter { it.constituent.symbol != symbol }
+                universeSize = loadUniverse().size
+                bindBreadth()
+                applyFilter()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun addTicker(symbol: String) {
+        Toast.makeText(this, "Validating $symbol…", Toast.LENGTH_SHORT).show()
+        worker.execute {
+            val constituent = com.swingtrader.sp500.model.Constituent(symbol, symbol, "Custom", 15.0)
+            val idea = try {
+                com.swingtrader.sp500.data.YahooFinanceClient.fetchDailyHistory(symbol)
+                    ?.let { com.swingtrader.sp500.analysis.SignalEngine.analyze(constituent, it) }
+            } catch (_: Exception) {
+                null
+            }
+            main.post {
+                if (idea == null) {
+                    Toast.makeText(this, "Couldn't fetch $symbol — not added", Toast.LENGTH_LONG).show()
+                } else {
+                    universe.add(symbol)
+                    allIdeas = allIdeas.filter { it.constituent.symbol != symbol } + idea
+                    universeSize = loadUniverse().size
+                    bindBreadth()
+                    applyFilter()
+                    Toast.makeText(this, "$symbol added to your universe", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun exportCsv() {
+        val df = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
+        val sb = StringBuilder()
+        sb.appendLine("type,symbol,signal,score,price,entry,exit,pl_pct,stop,target,opened,closed")
+        journal.openPositions().forEach { p ->
+            val idea = allIdeas.firstOrNull { it.constituent.symbol == p.symbol }
+            val now = idea?.price ?: Double.NaN
+            val pl = if (!now.isNaN() && p.entry > 0) (now - p.entry) / p.entry * 100 else Double.NaN
+            sb.appendLine(
+                "open,${p.symbol},${p.signal},,${if (now.isNaN()) "" else Format.two(now)}," +
+                    "${Format.two(p.entry)},,${if (pl.isNaN()) "" else Format.two(pl)}," +
+                    "${Format.two(p.stop)},${Format.two(p.target)},${df.format(Date(p.openedAt))},"
+            )
+        }
+        journal.closedTrades().forEach { t ->
+            sb.appendLine(
+                "closed,${t.symbol},,,,${Format.two(t.entry)},${Format.two(t.exit)}," +
+                    "${Format.two(t.plPct)},,,${df.format(Date(t.openedAt))},${df.format(Date(t.closedAt))}"
+            )
+        }
+        allIdeas.filter { decisions.get(it) == Decision.TAKEN }.forEach { i ->
+            sb.appendLine(
+                "selected,${i.constituent.symbol},${i.signal.name},${i.score},${Format.two(i.price)},,,,," +
+                    ",,"
+            )
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "SP500 Swing Scanner export")
+            putExtra(Intent.EXTRA_TEXT, sb.toString())
+        }
+        startActivity(Intent.createChooser(intent, "Export CSV"))
     }
 
     private fun openFilters() {
         val sectors = allIdeas.map { it.constituent.sector }.distinct().sorted()
-            .ifEmpty { repository.loadConstituents().map { it.sector }.distinct().sorted() }
+            .ifEmpty { loadUniverse().map { it.sector }.distinct().sorted() }
         FilterSheet.show(
-            this, filterState, sectors,
-            onApply = {
-                renderFilterButton()
-                applyFilter()
-            },
-            onClearDecisions = {
-                decisions.clearAll()
-                applyFilter()
-                Toast.makeText(this, "All ✓/✕ marks cleared", Toast.LENGTH_SHORT).show()
-            }
+            this, filterState, sectors, settings,
+            FilterSheet.Callbacks(
+                onApply = {
+                    renderFilterButton()
+                    applyFilter()
+                },
+                onClearDecisions = {
+                    decisions.clearAll()
+                    applyFilter()
+                    Toast.makeText(this, "All ✓/✕ marks cleared", Toast.LENGTH_SHORT).show()
+                },
+                onClearJournal = {
+                    journal.clearAll()
+                    AlertScheduler.sync(this)
+                    bindBreadth()
+                    applyFilter()
+                    Toast.makeText(this, "Trade journal reset", Toast.LENGTH_SHORT).show()
+                },
+                onExport = { exportCsv() },
+                onAddTicker = { addTicker(it) },
+                onAlertsToggled = { AlertScheduler.sync(this) }
+            )
         )
     }
 
@@ -194,7 +318,7 @@ class MainActivity : Activity() {
             val snapshot = repository.fetchMarketSnapshot()
             if (snapshot != null) main.post { bindMarket(snapshot) }
 
-            val constituents = repository.loadConstituents()
+            val constituents = loadUniverse()
             main.post {
                 universeSize = constituents.size
                 progress.max = constituents.size
@@ -270,6 +394,16 @@ class MainActivity : Activity() {
         val scanInfo = if (lastScanAt > 0) " · scanned ${Format.ago(lastScanAt)}" else ""
         header.findViewById<TextView>(R.id.txtBreadth).text =
             "${ideas.size}/$universeSize stocks · $buys buy setups · $bear bearish · $pctAbove% above 50d MA$scanInfo"
+
+        val stats = journal.stats()
+        val txtJournal = header.findViewById<TextView>(R.id.txtJournal)
+        if (stats.open > 0 || stats.closed > 0) {
+            txtJournal.visibility = View.VISIBLE
+            txtJournal.text = "Journal: ${stats.open} open · ${stats.closed} closed" +
+                if (stats.closed > 0) " · ${stats.winRate}% wins · avg ${Format.pct(stats.avgPl)}" else ""
+        } else {
+            txtJournal.visibility = View.GONE
+        }
     }
 
     private fun applyFilter() {

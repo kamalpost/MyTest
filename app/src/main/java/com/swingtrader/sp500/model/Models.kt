@@ -70,6 +70,11 @@ data class Idea(
     val atr14: Double,
     val hi3m: Double,
     val lo3m: Double,
+    val macdHist: Double,       // MACD(12,26,9) histogram at last bar
+    val macdBullCross: Boolean, // MACD line crossed above signal line recently
+    val bbUpper: Double,
+    val bbLower: Double,
+    val bbSqueeze: Boolean,     // Bollinger bandwidth in lowest quartile of 3mo
     val signal: Signal,
     val score: Int,             // 0..100 conviction for the primary signal
     val reason: String,

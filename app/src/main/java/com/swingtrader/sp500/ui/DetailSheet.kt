@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.TextView
 import com.swingtrader.sp500.R
+import com.swingtrader.sp500.data.JournalStore
+import com.swingtrader.sp500.data.Settings
 import com.swingtrader.sp500.model.Decision
 import com.swingtrader.sp500.model.Idea
 
@@ -50,6 +52,18 @@ object DetailSheet {
             appendLine("RSI(14)        ${Format.one(idea.rsi14)}")
             appendLine("MA 20d         $${Format.price(idea.sma20)}  (price ${if (idea.aboveSma20) "above ▲" else "below ▼"})")
             appendLine("MA 50d         $${Format.price(idea.sma50)}  (price ${if (idea.aboveSma50) "above ▲" else "below ▼"})")
+            if (!idea.macdHist.isNaN()) {
+                appendLine(
+                    "MACD hist      ${Format.two(idea.macdHist)}" +
+                        (if (idea.macdBullCross) "  (fresh bull cross)" else if (idea.macdHist > 0) "  (bullish)" else "  (bearish)")
+                )
+            }
+            if (!idea.bbUpper.isNaN()) {
+                appendLine(
+                    "Bollinger 20,2 $${Format.price(idea.bbLower)} – $${Format.price(idea.bbUpper)}" +
+                        if (idea.bbSqueeze) "  (squeeze)" else ""
+                )
+            }
             appendLine("Volume         ${Format.volume(idea.lastVol.toDouble())}  (${Format.one(idea.rvol)}× 20d avg)")
             appendLine("20d avg vol    ${Format.volume(idea.avgVol20)}")
             appendLine("Vol trend 5/20 ${Format.two(idea.volTrend)}×")
@@ -57,12 +71,34 @@ object DetailSheet {
             append("3mo range      $${Format.price(idea.lo3m)} – $${Format.price(idea.hi3m)}")
         }
 
-        tv(R.id.dPlan).text = if (idea.signal.bullish == true) buildString {
+        val settings = Settings(context)
+        val position = JournalStore(context).positionFor(idea.constituent.symbol)
+
+        tv(R.id.dPlan).text = if (position != null) buildString {
+            val pl = if (position.entry > 0) (idea.price - position.entry) / position.entry * 100.0 else 0.0
+            appendLine("OPEN POSITION")
+            appendLine("Entry    $${Format.price(position.entry)}  (${Format.ago(position.openedAt)})")
+            appendLine("Now      $${Format.price(idea.price)}  ${Format.pct(pl)}")
+            appendLine("Stop     $${Format.price(position.stop)}")
+            appendLine("Target   $${Format.price(position.target)}")
+            append("Tap ✓ TAKE again (or ✕ SKIP) to close and record the trade.")
+        } else if (idea.signal.bullish == true) buildString {
+            val shares = settings.positionSize(idea.price, idea.stopSuggestion)
             appendLine("SWING PLAN (ATR-based)")
             appendLine("Entry   ~$${Format.price(idea.price)}")
             appendLine("Stop     $${Format.price(idea.stopSuggestion)}  (1.5 × ATR)")
             appendLine("Target   $${Format.price(idea.targetSuggestion)}  (2.5 × ATR)")
-            append("R:R      1 : 1.67")
+            appendLine("R:R      1 : 1.67")
+            if (shares > 0) {
+                val cost = shares * idea.price
+                val risk = settings.accountSize * settings.riskPct / 100.0
+                append(
+                    "Size     $shares sh ≈ $${Format.price(cost)}  " +
+                        "(risk $${Format.price(risk)} = ${Format.one(settings.riskPct)}% of $${Format.price(settings.accountSize)})"
+                )
+            } else {
+                append("Size     — (set account & risk in ☰ FILTERS)")
+            }
         } else buildString {
             appendLine("SWING PLAN")
             append(

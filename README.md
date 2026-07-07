@@ -52,6 +52,24 @@ The constituent list (~490 symbols with names/sectors) ships in
   older than an hour. If Yahoo throttles part of a rescan, symbols that
   failed keep their previous data instead of vanishing.
 - **⟳ RESCAN** re-scans all symbols (10 concurrent requests, live progress).
+- **Trade journal** — TAKE opens a paper position at the current price with
+  the ATR stop/target frozen in; un-taking (or skipping) closes it and records
+  the result. Cards show live open P&L; the header shows open/closed counts,
+  win rate, and average P&L. Reset lives in the filter sheet.
+- **Position sizing** — set account size and risk-%-per-trade in the filter
+  sheet; every swing plan then shows the share count that risks exactly that
+  amount at the ATR stop.
+- **Price alerts** — a JobScheduler background job (~every 30 min, survives
+  reboots) checks open positions against their stop/target and fires a
+  notification the first time a level is breached. Toggle in the filter sheet.
+- **MACD(12,26,9) + Bollinger(20,2)** — confirmation layer on the conviction
+  score (fresh MACD bull cross, positive histogram, BB squeeze), shown in the
+  detail stats, with "MACD bullish" / "BB squeeze" filter toggles.
+- **CSV export** — share open positions, closed trades, and selections as CSV
+  through any app (email, Drive, etc.).
+- **Custom universe** — add any Yahoo ticker in the filter sheet (validated
+  against the API before it's added); long-press a card to remove a symbol
+  from future scans.
 
 ## Signal rules
 

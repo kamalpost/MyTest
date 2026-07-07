@@ -15,6 +15,8 @@ class FilterState {
     var rvolMin = 0.0        // 0 = off
     var priceMin = 0.0       // 0 = off
     var priceMax = 0.0       // 0 = off
+    var macdBullOnly = false
+    var squeezeOnly = false
 
     fun matches(idea: Idea): Boolean {
         if (caps.isNotEmpty() && idea.constituent.capCategory !in caps) return false
@@ -23,6 +25,8 @@ class FilterState {
         if (rvolMin > 0 && idea.rvol < rvolMin) return false
         if (priceMin > 0 && idea.price < priceMin) return false
         if (priceMax > 0 && idea.price > priceMax) return false
+        if (macdBullOnly && !(idea.macdBullCross || idea.macdHist > 0)) return false
+        if (squeezeOnly && !idea.bbSqueeze) return false
         return true
     }
 
@@ -33,6 +37,8 @@ class FilterState {
         if (rsiMin > 0 || rsiMax < 100) n++
         if (rvolMin > 0) n++
         if (priceMin > 0 || priceMax > 0) n++
+        if (macdBullOnly) n++
+        if (squeezeOnly) n++
         return n
     }
 
@@ -44,5 +50,7 @@ class FilterState {
         rvolMin = 0.0
         priceMin = 0.0
         priceMax = 0.0
+        macdBullOnly = false
+        squeezeOnly = false
     }
 }

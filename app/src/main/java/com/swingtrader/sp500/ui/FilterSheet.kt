@@ -11,18 +11,28 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import com.swingtrader.sp500.R
+import com.swingtrader.sp500.data.Settings
 import com.swingtrader.sp500.model.CapCategory
 import java.util.Locale
 
-/** Bottom sheet with the advanced screening filters. */
+/** Bottom sheet: screening filters plus portfolio, universe, and data tools. */
 object FilterSheet {
+
+    class Callbacks(
+        val onApply: () -> Unit,
+        val onClearDecisions: () -> Unit,
+        val onClearJournal: () -> Unit,
+        val onExport: () -> Unit,
+        val onAddTicker: (String) -> Unit,
+        val onAlertsToggled: () -> Unit
+    )
 
     fun show(
         context: Context,
         state: FilterState,
         sectors: List<String>,
-        onApply: () -> Unit,
-        onClearDecisions: () -> Unit
+        settings: Settings,
+        callbacks: Callbacks
     ) {
         val dialog = Dialog(context)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -83,6 +93,51 @@ object FilterSheet {
             })
         }
 
+        var macdOnly = state.macdBullOnly
+        var squeezeOnly = state.squeezeOnly
+        val indicatorRow = dialog.findViewById<LinearLayout>(R.id.indicatorRow)!!
+        indicatorRow.addView(chip(context.getString(R.string.chip_macd), macdOnly) { c ->
+            macdOnly = !macdOnly
+            c.isSelected = macdOnly
+        })
+        indicatorRow.addView(chip(context.getString(R.string.chip_squeeze), squeezeOnly) { c ->
+            squeezeOnly = !squeezeOnly
+            c.isSelected = squeezeOnly
+        })
+
+        val etAccount = dialog.findViewById<EditText>(R.id.etAccount)!!
+        val etRisk = dialog.findViewById<EditText>(R.id.etRisk)!!
+        etAccount.setText(Format.two(settings.accountSize))
+        etRisk.setText(Format.two(settings.riskPct))
+
+        val chipAlerts = dialog.findViewById<TextView>(R.id.chipAlerts)!!
+        fun renderAlerts() {
+            chipAlerts.isSelected = settings.alertsEnabled
+            chipAlerts.setTextColor(
+                context.getColor(if (settings.alertsEnabled) R.color.accent else R.color.text_secondary)
+            )
+        }
+        renderAlerts()
+        chipAlerts.setOnClickListener {
+            settings.alertsEnabled = !settings.alertsEnabled
+            renderAlerts()
+            callbacks.onAlertsToggled()
+        }
+
+        val etTicker = dialog.findViewById<EditText>(R.id.etTicker)!!
+        dialog.findViewById<TextView>(R.id.btnAddTicker)!!.setOnClickListener {
+            val sym = etTicker.text.toString().trim().uppercase()
+            if (sym.isNotEmpty()) {
+                dialog.dismiss()
+                callbacks.onAddTicker(sym)
+            }
+        }
+
+        dialog.findViewById<TextView>(R.id.btnExport)!!.setOnClickListener {
+            dialog.dismiss()
+            callbacks.onExport()
+        }
+
         fun renderRsi() {
             txtRsi.text = context.getString(R.string.filters_rsi) +
                 "  ${sbRsiMin.progress} – ${sbRsiMax.progress}"
@@ -127,19 +182,28 @@ object FilterSheet {
             state.rvolMin = sbRvol.progress / 10.0
             state.priceMin = etMin.text.toString().toDoubleOrNull() ?: 0.0
             state.priceMax = etMax.text.toString().toDoubleOrNull() ?: 0.0
+            state.macdBullOnly = macdOnly
+            state.squeezeOnly = squeezeOnly
+            etAccount.text.toString().toDoubleOrNull()?.let { if (it > 0) settings.accountSize = it }
+            etRisk.text.toString().toDoubleOrNull()?.let { if (it in 0.01..100.0) settings.riskPct = it }
             dialog.dismiss()
-            onApply()
+            callbacks.onApply()
         }
 
         dialog.findViewById<TextView>(R.id.btnReset)!!.setOnClickListener {
             state.reset()
             dialog.dismiss()
-            onApply()
+            callbacks.onApply()
         }
 
         dialog.findViewById<TextView>(R.id.btnClearDecisions)!!.setOnClickListener {
             dialog.dismiss()
-            onClearDecisions()
+            callbacks.onClearDecisions()
+        }
+
+        dialog.findViewById<TextView>(R.id.btnClearJournal)!!.setOnClickListener {
+            dialog.dismiss()
+            callbacks.onClearJournal()
         }
 
         dialog.show()
