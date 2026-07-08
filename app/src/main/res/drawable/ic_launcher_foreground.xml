@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="24" android:translateY="30">
+        <!-- rear tyre -->
+        <path android:fillColor="#15151c"
+            android:pathData="M30,44 m-9,0 a9,13 0 1,1 18,0 a9,13 0 1,1 -18,0" />
+        <!-- bike body -->
+        <path android:fillColor="#d43a3a"
+            android:pathData="M18,28 Q30,18 42,28 L38,36 Q30,31 22,36 Z" />
+        <!-- rider torso -->
+        <path android:fillColor="#222831"
+            android:pathData="M20,28 Q19,8 30,6 Q41,8 40,28 Z" />
+        <!-- helmet -->
+        <path android:fillColor="#e8e8f2"
+            android:pathData="M30,2 m-7,0 a7,7 0 1,1 14,0 a7,7 0 1,1 -14,0" />
+    </group>
+</vector>

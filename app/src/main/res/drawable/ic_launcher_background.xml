@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- sunset gradient sky -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient
+                android:startColor="#1e1440"
+                android:centerColor="#7a2d5e"
+                android:endColor="#e8683a"
+                android:angle="270" />
+        </aapt:attr>
+    </path>
+    <!-- sun -->
+    <path android:fillColor="#ffd23c"
+        android:pathData="M54,58 m-16,0 a16,16 0 1,1 32,0 a16,16 0 1,1 -32,0" />
+    <!-- road -->
+    <path android:fillColor="#5a5a62"
+        android:pathData="M44,66 L64,66 L84,108 L24,108 Z" />
+    <path android:fillColor="#e8d44c"
+        android:pathData="M53,70 L55,70 L56,78 L52,78 Z M56,84 L52,84 L50,96 L58,96 Z" />
+</vector>
