@@ -15,7 +15,8 @@ a native Android WebView app.
 ## How to play
 
 Race 5 rivals — VIPER, AXEL, NATASHA, BIFF and SLADE — to the finish flag
-across coast, farmland, desert and mountain zones.
+across three tracks: **Pacific Coast** ★, **Sierra Climb** ★★ and
+**Devil's Canyon** ★★★. Finish in the top 3 to unlock the next track.
 
 | Action | Phone (landscape) | Keyboard |
 |---|---|---|
@@ -24,11 +25,17 @@ across coast, farmland, desert and mountain zones.
 | Brake | BRAKE button | Arrow Down |
 | Punch | PUNCH button | A or F |
 | Kick | KICK button | S or G |
+| Nitro | NITRO button | N or Shift |
 
 - Punches and kicks drain a rival's stamina — empty it and they wipe out.
-- Rivals fight back; if your stamina hits zero, you're knocked off your bike.
-- Slamming into cars or roadside objects also puts you on the tarmac.
-- Your best finish time is saved on the device.
+- Rivals fight back (some carry clubs); at zero stamina you're knocked off.
+- **Weapon pickups** on the tarmac: grab a **club** (heavy damage) or a
+  **chain** (longer reach). Weapons wear out after a few swings.
+- **Nitro cans** refill your boost (max 3 charges); **wrenches** patch you up.
+- **Cops** patrol every track. If you crash while one is chasing you,
+  you're BUSTED and fined $40. Deck the cop for a $25 bounty — if you dare.
+- Race purses ($400/$250/$150…) fill your wallet; busts drain it.
+- Best time per track and your wallet are saved on the device.
 
 ## Project layout
 
