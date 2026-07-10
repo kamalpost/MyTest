@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Clipboard-with-tasks mark, ported from the web app's SVG favicon.
+     Drawn in a 512 viewport, scaled to sit inside the adaptive-icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <group
+        android:scaleX="0.62"
+        android:scaleY="0.62"
+        android:pivotX="256"
+        android:pivotY="274">
+
+        <!-- Clipboard body -->
+        <path
+            android:pathData="M142,130 h228 a22,22 0 0 1 22,22 v266 a22,22 0 0 1 -22,22 h-228 a22,22 0 0 1 -22,-22 v-266 a22,22 0 0 1 22,-22 z"
+            android:fillColor="#1C2128"
+            android:strokeColor="#30363D"
+            android:strokeWidth="8" />
+
+        <!-- Clipboard top clip -->
+        <path
+            android:pathData="M210,108 h92 a14,14 0 0 1 14,14 v20 a14,14 0 0 1 -14,14 h-92 a14,14 0 0 1 -14,-14 v-20 a14,14 0 0 1 14,-14 z"
+            android:fillColor="#388BFD" />
+
+        <!-- Row 1: checked -->
+        <path
+            android:pathData="M152,232 a16,16 0 1 0 32,0 a16,16 0 1 0 -32,0"
+            android:fillColor="#00000000"
+            android:strokeColor="#3FB950"
+            android:strokeWidth="8" />
+        <path
+            android:pathData="M158,232 L165,240 L180,222"
+            android:fillColor="#00000000"
+            android:strokeColor="#3FB950"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M207,224 h134 a7,7 0 0 1 7,7 a7,7 0 0 1 -7,7 h-134 a7,7 0 0 1 -7,-7 a7,7 0 0 1 7,-7 z"
+            android:fillColor="#3FB950"
+            android:fillAlpha="0.7" />
+
+        <!-- Row 2: checked -->
+        <path
+            android:pathData="M152,290 a16,16 0 1 0 32,0 a16,16 0 1 0 -32,0"
+            android:fillColor="#00000000"
+            android:strokeColor="#3FB950"
+            android:strokeWidth="8" />
+        <path
+            android:pathData="M158,290 L165,298 L180,278"
+            android:fillColor="#00000000"
+            android:strokeColor="#3FB950"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M207,282 h102 a7,7 0 0 1 7,7 a7,7 0 0 1 -7,7 h-102 a7,7 0 0 1 -7,-7 a7,7 0 0 1 7,-7 z"
+            android:fillColor="#3FB950"
+            android:fillAlpha="0.7" />
+
+        <!-- Row 3: pending -->
+        <path
+            android:pathData="M152,348 a16,16 0 1 0 32,0 a16,16 0 1 0 -32,0"
+            android:fillColor="#00000000"
+            android:strokeColor="#D29922"
+            android:strokeWidth="8" />
+        <path
+            android:pathData="M207,340 h118 a7,7 0 0 1 7,7 a7,7 0 0 1 -7,7 h-118 a7,7 0 0 1 -7,-7 a7,7 0 0 1 7,-7 z"
+            android:fillColor="#D29922"
+            android:fillAlpha="0.7" />
+
+        <!-- Row 4: pending -->
+        <path
+            android:pathData="M152,406 a16,16 0 1 0 32,0 a16,16 0 1 0 -32,0"
+            android:fillColor="#00000000"
+            android:strokeColor="#30363D"
+            android:strokeWidth="8" />
+        <path
+            android:pathData="M207,398 h86 a7,7 0 0 1 7,7 a7,7 0 0 1 -7,7 h-86 a7,7 0 0 1 -7,-7 a7,7 0 0 1 7,-7 z"
+            android:fillColor="#30363D"
+            android:fillAlpha="0.9" />
+    </group>
+</vector>
