@@ -4,10 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kamalpost.taskmanager.data.AppData
+import com.kamalpost.taskmanager.data.JsonBackup
 import com.kamalpost.taskmanager.data.Task
-import com.kamalpost.taskmanager.data.TaskRepository
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import com.kamalpost.taskmanager.data.provideTaskStore
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,7 +20,20 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 enum class ToastType { Success, Error, Info, Warning }
-data class ToastMsg(val text: String, val type: ToastType = ToastType.Info)
+data class ToastMsg(
+    val text: String,
+    val type: ToastType = ToastType.Info,
+    val actionLabel: String? = null,
+    val action: (() -> Unit)? = null
+)
+
+/** Callbacks into Android-framework land (reminders, auto-backup), wired by MainActivity.
+ *  Kept as plain lambdas so the ViewModel stays free of framework imports. */
+data class PlatformHooks(
+    val onDataChanged: (exportJson: String) -> Unit = {},
+    val onTaskScheduleChanged: (Task) -> Unit = {},
+    val onAllRescheduled: (List<Task>) -> Unit = {}
+)
 
 data class UiState(
     val loaded: Boolean = false,
@@ -37,7 +49,8 @@ data class UiState(
     // Details screen draft — committed on "Update", like the web app
     val draftCategory: String = "",
     val draftPriority: String = "Medium",
-    val draftNotes: String = ""
+    val draftNotes: String = "",
+    val draftDueAt: String = ""
 ) {
     val selectedTask: Task? get() = tasks.firstOrNull { it.id == selectedTaskId }
 
@@ -62,44 +75,56 @@ fun isToday(iso: String): Boolean = runCatching {
     Instant.parse(iso).atZone(ZoneId.systemDefault()).toLocalDate() == LocalDate.now()
 }.getOrDefault(false)
 
-data class TimerState(
-    val secondsLeft: Int = 25 * 60,
-    val running: Boolean = false,
-    val presetMinutes: Int = 25
-)
+fun isPast(iso: String): Boolean = runCatching {
+    Instant.parse(iso).isBefore(Instant.now())
+}.getOrDefault(false)
 
 class TaskViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repo = TaskRepository(app)
+    private val store = provideTaskStore(app)
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
 
-    private val _timer = MutableStateFlow(TimerState())
-    val timer: StateFlow<TimerState> = _timer.asStateFlow()
+    val timer: StateFlow<TimerState> = TimerEngine.state
 
     private val _toasts = MutableSharedFlow<ToastMsg>(extraBufferCapacity = 8)
     val toasts: SharedFlow<ToastMsg> = _toasts.asSharedFlow()
 
-    private var timerJob: Job? = null
+    var hooks: PlatformHooks = PlatformHooks()
+
+    private var lastDeleted: Pair<Int, Task>? = null
 
     init {
         viewModelScope.launch {
-            val data = repo.load()
+            val data = store.load()
             _state.update {
                 it.copy(loaded = true, tasks = data.tasks, categories = data.categories)
             }
         }
+        viewModelScope.launch {
+            TimerEngine.finished.collect {
+                toast("⏰ Timer complete!", ToastType.Warning)
+            }
+        }
     }
 
-    private fun toast(text: String, type: ToastType = ToastType.Info) {
-        _toasts.tryEmit(ToastMsg(text, type))
+    private fun toast(
+        text: String,
+        type: ToastType = ToastType.Info,
+        actionLabel: String? = null,
+        action: (() -> Unit)? = null
+    ) {
+        _toasts.tryEmit(ToastMsg(text, type, actionLabel, action))
     }
 
     /** Every mutation persists immediately — stronger than the web app's 5-minute autosave. */
     private fun persist() {
         val s = _state.value
-        viewModelScope.launch { repo.save(s.tasks, s.categories) }
+        viewModelScope.launch {
+            store.save(s.tasks, s.categories)
+            hooks.onDataChanged(exportJson())
+        }
     }
 
     // ---------- Tasks ----------
@@ -131,23 +156,30 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
             val t = s.tasks.firstOrNull { it.id == id }
             if (t == null) s.copy(
                 selectedTaskId = null,
-                draftCategory = "", draftPriority = "Medium", draftNotes = ""
+                draftCategory = "", draftPriority = "Medium", draftNotes = "", draftDueAt = ""
             )
             else s.copy(
                 selectedTaskId = id,
                 draftCategory = t.category,
                 draftPriority = t.priority,
-                draftNotes = t.notes
+                draftNotes = t.notes,
+                draftDueAt = t.dueAt
             )
         }
     }
 
-    fun setDraft(category: String? = null, priority: String? = null, notes: String? = null) {
+    fun setDraft(
+        category: String? = null,
+        priority: String? = null,
+        notes: String? = null,
+        dueAt: String? = null
+    ) {
         _state.update {
             it.copy(
                 draftCategory = category ?: it.draftCategory,
                 draftPriority = priority ?: it.draftPriority,
-                draftNotes = notes ?: it.draftNotes
+                draftNotes = notes ?: it.draftNotes,
+                draftDueAt = dueAt ?: it.draftDueAt
             )
         }
     }
@@ -159,53 +191,75 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
             toast("Select a task first.", ToastType.Error)
             return
         }
+        val updated = s.selectedTask!!.copy(
+            category = s.draftCategory,
+            priority = s.draftPriority,
+            notes = s.draftNotes,
+            dueAt = s.draftDueAt,
+            updatedAt = Instant.now().toString()
+        )
         _state.update { st ->
-            st.copy(tasks = st.tasks.map {
-                if (it.id == id) it.copy(
-                    category = st.draftCategory,
-                    priority = st.draftPriority,
-                    notes = st.draftNotes,
-                    updatedAt = Instant.now().toString()
-                ) else it
-            })
+            st.copy(tasks = st.tasks.map { if (it.id == id) updated else it })
         }
+        hooks.onTaskScheduleChanged(updated)
         persist()
         toast("Task updated & saved!", ToastType.Success)
     }
 
-    fun toggleCompleteSelected() {
-        val s = _state.value
-        val t = s.selectedTask
-        if (t == null) {
-            toast("Select a task first.", ToastType.Error)
-            return
-        }
+    fun toggleComplete(id: String) {
+        val t = _state.value.tasks.firstOrNull { it.id == id } ?: return
         val nowCompleted = !t.completed
+        val updated = t.copy(completed = nowCompleted, updatedAt = Instant.now().toString())
         _state.update { st ->
-            st.copy(tasks = st.tasks.map {
-                if (it.id == t.id) it.copy(
-                    completed = nowCompleted,
-                    updatedAt = Instant.now().toString()
-                ) else it
-            })
+            st.copy(tasks = st.tasks.map { if (it.id == id) updated else it })
         }
-        if (nowCompleted) clearSelection()
+        if (nowCompleted && _state.value.selectedTaskId == id) clearSelection()
+        hooks.onTaskScheduleChanged(updated)
         persist()
         toast(if (nowCompleted) "✓ Marked complete!" else "Task reopened.", ToastType.Success)
     }
 
-    fun deleteSelected() {
-        val s = _state.value
-        if (s.selectedTaskId == null) {
+    fun toggleCompleteSelected() {
+        val id = _state.value.selectedTaskId
+        if (id == null) {
             toast("Select a task first.", ToastType.Error)
             return
         }
-        _state.update { st ->
-            st.copy(tasks = st.tasks.filterNot { it.id == st.selectedTaskId })
-        }
-        clearSelection()
+        toggleComplete(id)
+    }
+
+    fun deleteTask(id: String) {
+        val idx = _state.value.tasks.indexOfFirst { it.id == id }
+        if (idx < 0) return
+        val task = _state.value.tasks[idx]
+        lastDeleted = idx to task
+        _state.update { st -> st.copy(tasks = st.tasks.filterNot { it.id == id }) }
+        if (_state.value.selectedTaskId == id) clearSelection()
+        hooks.onTaskScheduleChanged(task.copy(completed = true)) // cancels any reminder
         persist()
-        toast("Task deleted.", ToastType.Info)
+        toast("Task deleted.", ToastType.Info, actionLabel = "UNDO") { undoDelete() }
+    }
+
+    fun deleteSelected() {
+        val id = _state.value.selectedTaskId
+        if (id == null) {
+            toast("Select a task first.", ToastType.Error)
+            return
+        }
+        deleteTask(id)
+    }
+
+    fun undoDelete() {
+        val (idx, task) = lastDeleted ?: return
+        lastDeleted = null
+        _state.update { st ->
+            val list = st.tasks.toMutableList()
+            list.add(idx.coerceAtMost(list.size), task)
+            st.copy(tasks = list)
+        }
+        hooks.onTaskScheduleChanged(task)
+        persist()
+        toast("Task restored.", ToastType.Success)
     }
 
     fun renameTask(id: String, newName: String) {
@@ -224,7 +278,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         _state.update {
             it.copy(
                 selectedTaskId = null,
-                draftCategory = "", draftPriority = "Medium", draftNotes = ""
+                draftCategory = "", draftPriority = "Medium", draftNotes = "", draftDueAt = ""
             )
         }
     }
@@ -274,10 +328,10 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- Backup / restore ----------
 
     fun exportJson(): String =
-        repo.exportJson(_state.value.tasks, _state.value.categories)
+        JsonBackup.exportJson(_state.value.tasks, _state.value.categories)
 
     fun importBackup(text: String) {
-        val data: AppData? = repo.parseBackup(text)
+        val data: AppData? = JsonBackup.parseBackup(text)
         if (data == null) {
             toast("Invalid JSON file.", ToastType.Error)
             return
@@ -287,45 +341,19 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         }
         resetFilters()
         clearSelection()
+        hooks.onAllRescheduled(data.tasks)
         persist()
         toast("Imported ${data.tasks.size} tasks.", ToastType.Success)
     }
 
     fun notifyExported() = toast("Exported!", ToastType.Success)
 
-    // ---------- Pomodoro timer ----------
+    fun notifyBackupFolderSet() =
+        toast("Auto-backup folder set.", ToastType.Success)
 
-    fun toggleTimer() {
-        if (_timer.value.running) stopTimer() else startTimer()
-    }
+    // ---------- Pomodoro timer (delegates to the process-wide engine) ----------
 
-    private fun startTimer() {
-        if (_timer.value.secondsLeft <= 0) {
-            _timer.update { it.copy(secondsLeft = it.presetMinutes * 60) }
-        }
-        _timer.update { it.copy(running = true) }
-        timerJob?.cancel()
-        timerJob = viewModelScope.launch {
-            while (_timer.value.secondsLeft > 0) {
-                delay(1000)
-                _timer.update { it.copy(secondsLeft = it.secondsLeft - 1) }
-            }
-            _timer.update { it.copy(running = false) }
-            toast("⏰ Timer complete!", ToastType.Warning)
-        }
-    }
+    fun toggleTimer() = TimerEngine.toggle()
 
-    private fun stopTimer() {
-        timerJob?.cancel()
-        _timer.update { it.copy(running = false) }
-    }
-
-    fun setTimerPreset(minutes: Int) {
-        timerJob?.cancel()
-        _timer.value = TimerState(
-            secondsLeft = minutes * 60,
-            running = false,
-            presetMinutes = minutes
-        )
-    }
+    fun setTimerPreset(minutes: Int) = TimerEngine.setPreset(minutes)
 }

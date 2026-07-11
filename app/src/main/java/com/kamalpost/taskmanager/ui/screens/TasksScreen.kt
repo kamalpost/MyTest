@@ -8,12 +8,12 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,17 +21,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,12 +52,14 @@ import com.kamalpost.taskmanager.TaskViewModel
 import com.kamalpost.taskmanager.UiState
 import com.kamalpost.taskmanager.data.Priority
 import com.kamalpost.taskmanager.data.Task
+import com.kamalpost.taskmanager.isPast
 import com.kamalpost.taskmanager.ui.AppDropdown
 import com.kamalpost.taskmanager.ui.Tag
 import com.kamalpost.taskmanager.ui.fmtDate
 import com.kamalpost.taskmanager.ui.theme.AccentBlue
 import com.kamalpost.taskmanager.ui.theme.AccentGreen
 import com.kamalpost.taskmanager.ui.theme.AccentRed
+import com.kamalpost.taskmanager.ui.theme.AccentYellow
 import com.kamalpost.taskmanager.ui.theme.Border
 import com.kamalpost.taskmanager.ui.theme.Surface
 import com.kamalpost.taskmanager.ui.theme.Surface2
@@ -72,7 +75,6 @@ fun TasksScreen(
     onOpenDetails: () -> Unit
 ) {
     var renameTarget by remember { mutableStateOf<Task?>(null) }
-    var confirmDelete by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -86,7 +88,6 @@ fun TasksScreen(
                 onValueChange = vm::setSearch,
                 placeholder = { Text("Search tasks…", color = TextMuted, fontSize = 14.sp) },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions.Default,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = AccentBlue,
                     unfocusedBorderColor = Border,
@@ -147,7 +148,7 @@ fun TasksScreen(
             )
         }
 
-        // Task list
+        // Task list — swipe right to complete, swipe left to delete (with undo)
         val filtered = state.filteredTasks
         if (filtered.isEmpty()) {
             Column(
@@ -177,14 +178,16 @@ fun TasksScreen(
                 verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
                 items(filtered, key = { it.id }) { task ->
-                    TaskItem(
+                    SwipeableTaskItem(
                         task = task,
                         selected = task.id == state.selectedTaskId,
                         onClick = {
                             vm.selectTask(task.id)
                             onOpenDetails()
                         },
-                        onLongClick = { renameTarget = task }
+                        onLongClick = { renameTarget = task },
+                        onSwipeComplete = { vm.toggleComplete(task.id) },
+                        onSwipeDelete = { vm.deleteTask(task.id) }
                     )
                 }
             }
@@ -207,10 +210,7 @@ fun TasksScreen(
             ) { Text("✓ Complete", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
 
             OutlinedButton(
-                onClick = {
-                    if (state.selectedTaskId != null) confirmDelete = true
-                    else vm.deleteSelected() // triggers the "select first" toast
-                },
+                onClick = { vm.deleteSelected() },
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentRed),
                 border = BorderStroke(1.dp, AccentRed.copy(alpha = 0.4f)),
                 modifier = Modifier.weight(1f)
@@ -258,25 +258,69 @@ fun TasksScreen(
             }
         )
     }
+}
 
-    // Delete confirmation, like the web app's confirm()
-    if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            containerColor = Surface2,
-            title = { Text("Delete this task?", color = TextPrimary, fontSize = 17.sp) },
-            text = { Text("This cannot be undone.", color = TextMuted) },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.deleteSelected()
-                    confirmDelete = false
-                }) { Text("Delete", color = AccentRed, fontWeight = FontWeight.Bold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
-                    Text("Cancel", color = TextMuted)
+@Composable
+private fun SwipeableTaskItem(
+    task: Task,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onSwipeComplete: () -> Unit,
+    onSwipeDelete: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> onSwipeComplete()
+                SwipeToDismissBoxValue.EndToStart -> onSwipeDelete()
+                SwipeToDismissBoxValue.Settled -> {}
+            }
+            // Never let the box settle in a dismissed state; the list itself
+            // updates (item removed / restyled) and the row snaps back.
+            false
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val target = dismissState.dismissDirection
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(
+                        when (target) {
+                            SwipeToDismissBoxValue.StartToEnd -> AccentGreen.copy(alpha = 0.18f)
+                            SwipeToDismissBoxValue.EndToStart -> AccentRed.copy(alpha = 0.18f)
+                            else -> Surface
+                        }
+                    )
+                    .padding(horizontal = 20.dp)
+            ) {
+                if (target == SwipeToDismissBoxValue.StartToEnd) {
+                    Text(
+                        if (task.completed) "↩ Reopen" else "✓ Complete",
+                        color = AccentGreen, fontWeight = FontWeight.Bold, fontSize = 13.sp
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                if (target == SwipeToDismissBoxValue.EndToStart) {
+                    Text(
+                        "✕ Delete",
+                        color = AccentRed, fontWeight = FontWeight.Bold, fontSize = 13.sp
+                    )
                 }
             }
+        }
+    ) {
+        TaskItem(
+            task = task,
+            selected = selected,
+            onClick = onClick,
+            onLongClick = onLongClick
         )
     }
 }
@@ -329,6 +373,13 @@ private fun TaskItem(
             ) {
                 if (task.category.isNotEmpty()) Tag(task.category, AccentBlue)
                 Tag(priority.label, priority.color)
+                if (task.dueAt.isNotEmpty()) {
+                    val overdue = !task.completed && isPast(task.dueAt)
+                    Tag(
+                        "due ${fmtDate(task.dueAt)}",
+                        if (overdue) AccentRed else AccentYellow
+                    )
+                }
                 Spacer(Modifier.weight(1f))
                 Text(
                     text = fmtDate(task.updatedAt),

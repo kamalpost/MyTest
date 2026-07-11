@@ -58,7 +58,10 @@ fun AddTaskScreen(
     state: UiState,
     vm: TaskViewModel,
     onExport: () -> Unit,
-    onImport: () -> Unit
+    onImport: () -> Unit,
+    autoBackupOn: Boolean,
+    onChooseBackupFolder: () -> Unit,
+    onDisableAutoBackup: () -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf("") }
@@ -208,6 +211,45 @@ fun AddTaskScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 Text("⬆ Upload Backup", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            }
+        }
+
+        SectionLabel("Auto-Backup")
+        Text(
+            if (autoBackupOn)
+                "On — a backup JSON is written to your chosen folder on every change. " +
+                    "Pick a folder synced by Drive/Dropbox for cross-device backup."
+            else
+                "Off — choose a folder (e.g. one synced by Drive/Dropbox) and a backup " +
+                    "JSON will be written there on every change.",
+            color = TextMuted,
+            fontSize = 11.sp,
+            lineHeight = 16.sp
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            OutlinedButton(
+                onClick = onChooseBackupFolder,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentGreen),
+                border = androidx.compose.foundation.BorderStroke(1.dp, AccentGreen.copy(alpha = 0.4f)),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    if (autoBackupOn) "📁 Change folder" else "📁 Choose folder",
+                    fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
+                )
+            }
+            if (autoBackupOn) {
+                OutlinedButton(
+                    onClick = onDisableAutoBackup,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Turn off", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                }
             }
         }
 

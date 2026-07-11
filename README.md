@@ -32,6 +32,21 @@ to app-private storage on every mutation, which is strictly more reliable than
 the web app's 5-minute autosave + save-on-close. Backups replace the server as
 the way to move data between devices.
 
+## v1.1 — beyond the web app
+
+- **Room database** — tasks and categories live in SQLite; v1.0's JSON file is
+  migrated automatically on first launch (kept as `tasks.json.migrated`).
+- **Undo delete** — deleting shows an UNDO snackbar instead of a confirm dialog.
+- **Swipe gestures** — swipe a task right to complete/reopen, left to delete.
+- **Background pomodoro** — a foreground service keeps the countdown alive with
+  a live notification; a completion alert fires even if the app is backgrounded.
+- **Due dates & reminders** — set a due date/time in Details; overdue tasks are
+  flagged in the list and a notification fires at the due time (re-registered
+  after reboot). Old backups without `dueAt` still import cleanly.
+- **Auto-backup folder** — pick any folder (e.g. one synced by Drive/Dropbox)
+  and a backup JSON is written there on every change, giving cross-device
+  backup with no cloud credentials in the app.
+
 ## Project layout
 
 ```

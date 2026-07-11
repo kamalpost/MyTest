@@ -1,5 +1,6 @@
 package com.kamalpost.taskmanager
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,6 +25,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -53,6 +54,10 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kamalpost.taskmanager.platform.AutoBackup
+import com.kamalpost.taskmanager.platform.Notifications
+import com.kamalpost.taskmanager.platform.ReminderScheduler
+import com.kamalpost.taskmanager.platform.TimerService
 import com.kamalpost.taskmanager.ui.TimerBar
 import com.kamalpost.taskmanager.ui.screens.AddTaskScreen
 import com.kamalpost.taskmanager.ui.screens.DetailsScreen
@@ -68,12 +73,14 @@ import com.kamalpost.taskmanager.ui.theme.TaskManagerTheme
 import com.kamalpost.taskmanager.ui.theme.TextMuted
 import com.kamalpost.taskmanager.ui.theme.TextPrimary
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Notifications.ensureChannels(this)
         setContent {
             TaskManagerTheme {
                 TaskManagerApp()
@@ -96,8 +103,38 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
     val context = LocalContext.current
 
     var tab by rememberSaveable { mutableIntStateOf(Tab.Tasks.ordinal) }
+    var autoBackupOn by remember { mutableStateOf(AutoBackup.folder(context) != null) }
 
-    // --- Toasts -> Snackbar ---
+    // Wire the ViewModel's platform hooks: reminders + auto-backup
+    LaunchedEffect(vm) {
+        val appContext = context.applicationContext
+        vm.hooks = PlatformHooks(
+            onDataChanged = { json -> AutoBackup.write(appContext, json) },
+            onTaskScheduleChanged = { task -> ReminderScheduler.sync(appContext, task) },
+            onAllRescheduled = { tasks -> ReminderScheduler.syncAll(appContext, tasks) }
+        )
+    }
+
+    // Ask for notification permission (Android 13+) once at startup
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= 33 && !Notifications.canPost(context)) {
+            notifPermLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // Keep the pomodoro alive in the background via the foreground service
+    LaunchedEffect(Unit) {
+        TimerEngine.state
+            .distinctUntilChangedBy { it.running }
+            .collect { st ->
+                if (st.running) TimerService.start(context.applicationContext)
+            }
+    }
+
+    // --- Toasts -> Snackbar (with optional action, e.g. UNDO) ---
     val snackbarHostState = remember { SnackbarHostState() }
     var toastType by remember { mutableStateOf(ToastType.Info) }
     LaunchedEffect(Unit) {
@@ -110,11 +147,16 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
                 ToastType.Warning -> "⚠"
                 ToastType.Info -> "ℹ"
             }
-            snackbarHostState.showSnackbar("$icon  ${t.text}", duration = SnackbarDuration.Short)
+            val result = snackbarHostState.showSnackbar(
+                message = "$icon  ${t.text}",
+                actionLabel = t.actionLabel,
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) t.action?.invoke()
         }
     }
 
-    // --- SAF: export / import backups, replacing the web app's download/upload ---
+    // --- SAF: export / import backups + auto-backup folder ---
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -135,6 +177,16 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
                     ins.readBytes().decodeToString()
                 }
             }.getOrNull()?.let { vm.importBackup(it) }
+        }
+    }
+    val backupFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            AutoBackup.setFolder(context, uri)
+            AutoBackup.write(context.applicationContext, vm.exportJson())
+            autoBackupOn = true
+            vm.notifyBackupFolderSet()
         }
     }
 
@@ -207,7 +259,8 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
                 Snackbar(
                     snackbarData = data,
                     containerColor = Surface2,
-                    contentColor = color
+                    contentColor = color,
+                    actionColor = AccentBlue
                 )
             }
         }
@@ -227,7 +280,13 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
                             .format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss"))
                         exportLauncher.launch("tasks_export_$stamp.json")
                     },
-                    onImport = { importLauncher.launch(arrayOf("application/json", "text/*")) }
+                    onImport = { importLauncher.launch(arrayOf("application/json", "text/*")) },
+                    autoBackupOn = autoBackupOn,
+                    onChooseBackupFolder = { backupFolderLauncher.launch(null) },
+                    onDisableAutoBackup = {
+                        AutoBackup.clearFolder(context)
+                        autoBackupOn = false
+                    }
                 )
                 Tab.Tasks -> TasksScreen(
                     state = state,
@@ -240,7 +299,7 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
     }
 }
 
-/** Header title: first ~5 words, max like the web app's updateHeaderTitle. */
+/** Header title: first ~5 words, like the web app's updateHeaderTitle. */
 private fun headerTitle(taskName: String?): String {
     if (taskName.isNullOrBlank()) return "Task Manager"
     val words = taskName.split(" ").take(5).joinToString(" ")

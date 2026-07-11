@@ -20,7 +20,8 @@ data class Task(
     val notes: String = "",
     val completed: Boolean = false,
     val createdAt: String = "",
-    val updatedAt: String = ""
+    val updatedAt: String = "",
+    val dueAt: String = ""
 )
 
 @Serializable
