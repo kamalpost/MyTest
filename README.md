@@ -32,6 +32,20 @@ to app-private storage on every mutation, which is strictly more reliable than
 the web app's 5-minute autosave + save-on-close. Backups replace the server as
 the way to move data between devices.
 
+## v1.2 — production-grade UI
+
+The HTML-port layout was redesigned as a first-class Android app:
+
+- **Tasks is the home screen** — search, filter chips, animated list, and a
+  FAB opening a new-task bottom sheet (no more form-as-a-tab).
+- **Details is a pushed full screen** with back navigation, inline name
+  editing, segmented priority chips, and complete/delete in the app bar.
+- **The pomodoro has its own screen** with a circular countdown; while it
+  runs, a compact chip in the top bar shows the remaining time from anywhere.
+- **Manage screen** for categories, backup/restore, and the auto-backup toggle.
+- Real Material icons throughout (no emoji buttons), edge-to-edge rendering,
+  splash screen, overdue-count badge on the Tasks tab, animated list updates.
+
 ## v1.1 — beyond the web app
 
 - **Room database** — tasks and categories live in SQLite; v1.0's JSON file is

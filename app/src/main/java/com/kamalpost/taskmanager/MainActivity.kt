@@ -3,12 +3,13 @@ package com.kamalpost.taskmanager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +17,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -43,7 +53,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.LinearEasing
@@ -52,16 +61,17 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kamalpost.taskmanager.platform.AutoBackup
 import com.kamalpost.taskmanager.platform.Notifications
 import com.kamalpost.taskmanager.platform.ReminderScheduler
 import com.kamalpost.taskmanager.platform.TimerService
-import com.kamalpost.taskmanager.ui.TimerBar
-import com.kamalpost.taskmanager.ui.screens.AddTaskScreen
 import com.kamalpost.taskmanager.ui.screens.DetailsScreen
+import com.kamalpost.taskmanager.ui.screens.ManageScreen
 import com.kamalpost.taskmanager.ui.screens.TasksScreen
+import com.kamalpost.taskmanager.ui.screens.TimerScreen
 import com.kamalpost.taskmanager.ui.theme.AccentBlue
 import com.kamalpost.taskmanager.ui.theme.AccentGreen
 import com.kamalpost.taskmanager.ui.theme.AccentRed
@@ -79,7 +89,9 @@ import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         Notifications.ensureChannels(this)
         setContent {
             TaskManagerTheme {
@@ -89,10 +101,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Tab(val label: String, val emoji: String) {
-    Add("Add", "➕"),
-    Tasks("Tasks", "📋"),
-    Details("Details", "🔍")
+private enum class Tab(val label: String) {
+    Tasks("Tasks"),
+    Timer("Timer"),
+    Manage("Manage")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,6 +115,7 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
     val context = LocalContext.current
 
     var tab by rememberSaveable { mutableIntStateOf(Tab.Tasks.ordinal) }
+    var detailsOpen by rememberSaveable { mutableStateOf(false) }
     var autoBackupOn by remember { mutableStateOf(AutoBackup.folder(context) != null) }
 
     // Wire the ViewModel's platform hooks: reminders + auto-backup
@@ -141,14 +154,8 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
         vm.toasts.collect { t ->
             toastType = t.type
             snackbarHostState.currentSnackbarData?.dismiss()
-            val icon = when (t.type) {
-                ToastType.Success -> "✓"
-                ToastType.Error -> "✕"
-                ToastType.Warning -> "⚠"
-                ToastType.Info -> "ℹ"
-            }
             val result = snackbarHostState.showSnackbar(
-                message = "$icon  ${t.text}",
+                message = t.text,
                 actionLabel = t.actionLabel,
                 duration = SnackbarDuration.Short
             )
@@ -190,57 +197,122 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
         }
     }
 
+    // Details is a pushed screen: system back returns to the list
+    if (detailsOpen && state.selectedTask != null) {
+        BackHandler { detailsOpen = false }
+        DetailsScreen(
+            state = state,
+            vm = vm,
+            onBack = { detailsOpen = false }
+        )
+        // Snackbars still need a host while details is open
+        Box(modifier = Modifier.fillMaxSize()) {
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) { data ->
+                ToastSnackbar(data = data, type = toastType)
+            }
+        }
+        return
+    }
+
     Scaffold(
         containerColor = Bg,
         topBar = {
-            Column {
-                TopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Surface,
-                        titleContentColor = TextPrimary
-                    ),
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            StatusDot()
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                text = headerTitle(state.selectedTask?.name),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = if (state.selectedTask != null) AccentBlue else TextPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            LiveClock()
-                        }
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Surface,
+                    titleContentColor = TextPrimary
+                ),
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        StatusDot()
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "Task Manager",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
                     }
-                )
-                TimerBar(
-                    timer = timer,
-                    onToggle = vm::toggleTimer,
-                    onPreset = vm::setTimerPreset
-                )
-            }
+                },
+                actions = {
+                    // Compact running-timer chip; tap to open the Timer screen
+                    val timerActive = timer.running ||
+                        timer.secondsLeft != timer.presetMinutes * 60
+                    if (timerActive && tab != Tab.Timer.ordinal) {
+                        val chipColor = when {
+                            timer.secondsLeft <= 60 -> AccentRed
+                            timer.secondsLeft <= 5 * 60 -> AccentYellow
+                            else -> AccentGreen
+                        }
+                        AssistChip(
+                            onClick = { tab = Tab.Timer.ordinal },
+                            label = {
+                                Text(
+                                    "%02d:%02d".format(
+                                        timer.secondsLeft / 60, timer.secondsLeft % 60
+                                    ),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 12.sp,
+                                    color = chipColor
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Timer,
+                                    contentDescription = "Timer",
+                                    tint = chipColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = chipColor.copy(alpha = 0.1f)
+                            ),
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                    LiveClock()
+                    Spacer(Modifier.width(16.dp))
+                }
+            )
         },
         bottomBar = {
             NavigationBar(containerColor = Surface) {
                 Tab.entries.forEach { t ->
-                    val badge = if (t == Tab.Tasks && state.tasks.isNotEmpty())
-                        " ${state.updatedTodayCount}/${state.tasks.size}" else ""
                     NavigationBarItem(
                         selected = tab == t.ordinal,
                         onClick = { tab = t.ordinal },
-                        icon = { Text(t.emoji, fontSize = 18.sp) },
+                        icon = {
+                            val icon = when (t) {
+                                Tab.Tasks -> Icons.Filled.Checklist
+                                Tab.Timer -> Icons.Filled.Timer
+                                Tab.Manage -> Icons.Filled.Tune
+                            }
+                            if (t == Tab.Tasks) {
+                                val overdue = state.tasks.count {
+                                    !it.completed && it.dueAt.isNotEmpty() && isPast(it.dueAt)
+                                }
+                                BadgedBox(badge = {
+                                    if (overdue > 0) {
+                                        Badge(containerColor = AccentRed) {
+                                            Text("$overdue", fontSize = 10.sp)
+                                        }
+                                    }
+                                }) {
+                                    Icon(icon, contentDescription = t.label)
+                                }
+                            } else {
+                                Icon(icon, contentDescription = t.label)
+                            }
+                        },
                         label = {
-                            Text(
-                                t.label + badge,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text(t.label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         },
                         colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = AccentBlue,
                             selectedTextColor = AccentBlue,
+                            unselectedIconColor = TextMuted,
                             unselectedTextColor = TextMuted,
                             indicatorColor = AccentBlue.copy(alpha = 0.15f)
                         )
@@ -250,18 +322,7 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
         },
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
-                val color = when (toastType) {
-                    ToastType.Success -> AccentGreen
-                    ToastType.Error -> AccentRed
-                    ToastType.Warning -> AccentYellow
-                    ToastType.Info -> AccentBlue
-                }
-                Snackbar(
-                    snackbarData = data,
-                    containerColor = Surface2,
-                    contentColor = color,
-                    actionColor = AccentBlue
-                )
+                ToastSnackbar(data = data, type = toastType)
             }
         }
     ) { padding ->
@@ -272,7 +333,17 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
                 .background(Bg)
         ) {
             when (Tab.entries[tab]) {
-                Tab.Add -> AddTaskScreen(
+                Tab.Tasks -> TasksScreen(
+                    state = state,
+                    vm = vm,
+                    onOpenDetails = { detailsOpen = true }
+                )
+                Tab.Timer -> TimerScreen(
+                    timer = timer,
+                    onToggle = vm::toggleTimer,
+                    onPreset = vm::setTimerPreset
+                )
+                Tab.Manage -> ManageScreen(
                     state = state,
                     vm = vm,
                     onExport = {
@@ -288,25 +359,31 @@ fun TaskManagerApp(vm: TaskViewModel = viewModel()) {
                         autoBackupOn = false
                     }
                 )
-                Tab.Tasks -> TasksScreen(
-                    state = state,
-                    vm = vm,
-                    onOpenDetails = { tab = Tab.Details.ordinal }
-                )
-                Tab.Details -> DetailsScreen(state = state, vm = vm)
             }
         }
     }
 }
 
-/** Header title: first ~5 words, like the web app's updateHeaderTitle. */
-private fun headerTitle(taskName: String?): String {
-    if (taskName.isNullOrBlank()) return "Task Manager"
-    val words = taskName.split(" ").take(5).joinToString(" ")
-    return if (words.length < taskName.length) "$words…" else words
+@Composable
+private fun ToastSnackbar(
+    data: androidx.compose.material3.SnackbarData,
+    type: ToastType
+) {
+    val color = when (type) {
+        ToastType.Success -> AccentGreen
+        ToastType.Error -> AccentRed
+        ToastType.Warning -> AccentYellow
+        ToastType.Info -> AccentBlue
+    }
+    Snackbar(
+        snackbarData = data,
+        containerColor = Surface2,
+        contentColor = color,
+        actionColor = AccentBlue
+    )
 }
 
-/** Pulsing green status dot, like the web app's .status-dot. */
+/** Pulsing green status dot, a nod to the web app's .status-dot. */
 @Composable
 private fun StatusDot() {
     val transition = rememberInfiniteTransition(label = "pulse")
@@ -341,7 +418,7 @@ private fun LiveClock() {
     Text(
         text = now.format(DateTimeFormatter.ofPattern("HH:mm:ss")),
         color = if (redPhase) AccentRed else AccentGreen,
-        fontSize = 13.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
         fontFamily = FontFamily.Monospace
     )

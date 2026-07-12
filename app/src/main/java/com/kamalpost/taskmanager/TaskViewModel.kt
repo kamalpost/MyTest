@@ -47,6 +47,7 @@ data class UiState(
     val notUpdatedToday: Boolean = false,
     val showCompleted: Boolean = false,
     // Details screen draft — committed on "Update", like the web app
+    val draftName: String = "",
     val draftCategory: String = "",
     val draftPriority: String = "Medium",
     val draftNotes: String = "",
@@ -156,10 +157,12 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
             val t = s.tasks.firstOrNull { it.id == id }
             if (t == null) s.copy(
                 selectedTaskId = null,
-                draftCategory = "", draftPriority = "Medium", draftNotes = "", draftDueAt = ""
+                draftName = "", draftCategory = "", draftPriority = "Medium",
+                draftNotes = "", draftDueAt = ""
             )
             else s.copy(
                 selectedTaskId = id,
+                draftName = t.name,
                 draftCategory = t.category,
                 draftPriority = t.priority,
                 draftNotes = t.notes,
@@ -169,6 +172,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setDraft(
+        name: String? = null,
         category: String? = null,
         priority: String? = null,
         notes: String? = null,
@@ -176,6 +180,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
     ) {
         _state.update {
             it.copy(
+                draftName = name ?: it.draftName,
                 draftCategory = category ?: it.draftCategory,
                 draftPriority = priority ?: it.draftPriority,
                 draftNotes = notes ?: it.draftNotes,
@@ -192,6 +197,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val updated = s.selectedTask!!.copy(
+            name = s.draftName.trim().ifEmpty { s.selectedTask!!.name },
             category = s.draftCategory,
             priority = s.draftPriority,
             notes = s.draftNotes,
@@ -278,7 +284,8 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         _state.update {
             it.copy(
                 selectedTaskId = null,
-                draftCategory = "", draftPriority = "Medium", draftNotes = "", draftDueAt = ""
+                draftName = "", draftCategory = "", draftPriority = "Medium",
+                draftNotes = "", draftDueAt = ""
             )
         }
     }
