@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#1A237E</color>
+    <color name="primary_dark">#0D1454</color>
+    <color name="accent">#3D5AFE</color>
+
+    <color name="lock_background">#101321</color>
+    <color name="keypad_button_bg">#1E2233</color>
+    <color name="keypad_text">#FFFFFF</color>
+
+    <color name="pin_dot_stroke">#9AA0B4</color>
+    <color name="pin_dot_filled">#3D5AFE</color>
+
+    <color name="banner_background">#FFF3CD</color>
+    <color name="banner_text">#7A5B00</color>
+</resources>

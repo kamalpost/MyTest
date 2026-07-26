@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">App Lock</string>
+
+    <string name="search_hint">Search apps</string>
+    <string name="change_pin">Change PIN</string>
+    <string name="accessibility_banner_text">Turn on the App Lock accessibility service so locked apps are protected.</string>
+    <string name="enable">Enable</string>
+
+    <string name="enter_current_pin">Enter your current PIN</string>
+    <string name="enter_new_pin">Choose a 4-digit PIN</string>
+    <string name="confirm_new_pin">Confirm your new PIN</string>
+    <string name="pin_incorrect">Incorrect PIN</string>
+    <string name="pin_mismatch">PINs didn\'t match, try again</string>
+    <string name="pin_saved">PIN saved</string>
+
+    <string name="enter_pin_to_unlock">Enter PIN to unlock</string>
+
+    <string name="accessibility_service_description">Detects when a locked app is opened so App Lock can show the PIN screen on top of it. App Lock does not read or record any other content on screen.</string>
+</resources>

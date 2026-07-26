@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:columnCount="3"
+    android:rowCount="4"
+    android:alignmentMode="alignMargins"
+    android:useDefaultMargins="true">
+
+    <TextView android:id="@+id/btn1" style="@style/KeypadDigit" android:text="1" />
+    <TextView android:id="@+id/btn2" style="@style/KeypadDigit" android:text="2" />
+    <TextView android:id="@+id/btn3" style="@style/KeypadDigit" android:text="3" />
+
+    <TextView android:id="@+id/btn4" style="@style/KeypadDigit" android:text="4" />
+    <TextView android:id="@+id/btn5" style="@style/KeypadDigit" android:text="5" />
+    <TextView android:id="@+id/btn6" style="@style/KeypadDigit" android:text="6" />
+
+    <TextView android:id="@+id/btn7" style="@style/KeypadDigit" android:text="7" />
+    <TextView android:id="@+id/btn8" style="@style/KeypadDigit" android:text="8" />
+    <TextView android:id="@+id/btn9" style="@style/KeypadDigit" android:text="9" />
+
+    <View
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_columnWeight="1"
+        android:layout_rowWeight="1" />
+
+    <TextView android:id="@+id/btn0" style="@style/KeypadDigit" android:text="0" />
+
+    <ImageButton
+        android:id="@+id/btnBackspace"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_columnWeight="1"
+        android:layout_rowWeight="1"
+        android:layout_margin="4dp"
+        android:background="@drawable/bg_keypad_button"
+        android:contentDescription="@null"
+        android:padding="20dp"
+        android:src="@drawable/ic_backspace" />
+
+</GridLayout>
