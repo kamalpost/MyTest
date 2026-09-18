@@ -77,7 +77,18 @@ Open the app outside focus time to get the setup screen:
 * **Blocking strength** — a checklist with *Grant* buttons: notifications, phone/SMS/contacts,
   Do Not Disturb access, display over other apps, exact alarms, battery optimisation, plus
   the device-owner command above.
-* **Options** — screen pinning on/off, silence notifications on/off, keypad tones.
+* **Options** — screen pinning on/off, silence notifications on/off, keypad tones, and an optional
+  **Break PIN** (4–8 digits, stored hashed): when set, the feature phone asks for it before a break
+  or before ending a session, and so does *End focus session* on this screen. Five wrong tries
+  lock it for 30 s.
+
+### "Why does my phone ask for its lock PIN when I press Break?"
+
+That prompt comes from Android, not from the app. Leaving a pinned app triggers the screen lock
+whenever the system setting *Ask for PIN before unpinning* is on (the default). The app cannot
+change that setting; turn it off under **Settings → Security → App pinning** (the setup screen has
+an *Open security settings* shortcut), or make the app device owner, which uses real lock task
+mode and never shows the prompt.
 
 ## Build
 
@@ -113,6 +124,6 @@ app/src/main/java/app/focusphone/
   phone/FeaturePhoneActivity.kt the pinned feature phone: LCD + keypad + actions
   phone/ScreenHost.kt         navigation stack for LCD screens
   phone/MultiTap.kt           T9 multi-tap text entry
-  phone/screens/*.kt          Home, Menu, Dialer, Contacts, Messages, Call, Break
+  phone/screens/*.kt          Home, Menu, Dialer, Contacts, Messages, Call, Break, Pin
   setup/SetupActivity.kt      smartphone-style schedule / permissions / options screen
 ```

@@ -57,6 +57,42 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("keyTones", true)
         set(v) = sp.edit().putBoolean("keyTones", v).apply()
 
+    // ---- optional Break PIN (stored as a salted SHA-256 hash) ----
+    val hasBreakPin: Boolean get() = !sp.getString("breakPinHash", null).isNullOrEmpty()
+
+    fun setBreakPin(pin: String?) {
+        if (pin.isNullOrEmpty()) {
+            sp.edit().remove("breakPinHash").remove("breakPinSalt").apply()
+        } else {
+            val salt = java.util.UUID.randomUUID().toString()
+            sp.edit().putString("breakPinSalt", salt).putString("breakPinHash", hashPin(pin, salt)).apply()
+        }
+        sp.edit().putInt("pinFailures", 0).putLong("pinLockUntil", 0L).apply()
+    }
+
+    fun checkBreakPin(pin: String): Boolean {
+        if (!hasBreakPin) return true
+        val salt = sp.getString("breakPinSalt", "") ?: ""
+        val ok = hashPin(pin, salt) == sp.getString("breakPinHash", null)
+        if (ok) {
+            sp.edit().putInt("pinFailures", 0).putLong("pinLockUntil", 0L).apply()
+        } else {
+            val failures = sp.getInt("pinFailures", 0) + 1
+            val e = sp.edit().putInt("pinFailures", failures)
+            if (failures >= 5) e.putLong("pinLockUntil", System.currentTimeMillis() + 30_000L).putInt("pinFailures", 0)
+            e.apply()
+        }
+        return ok
+    }
+
+    fun pinLockedForSeconds(): Long =
+        maxOf(0L, (sp.getLong("pinLockUntil", 0L) - System.currentTimeMillis() + 999) / 1000)
+
+    private fun hashPin(pin: String, salt: String): String {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        return md.digest((salt + ":" + pin).toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+
     var askedCorePermissions: Boolean
         get() = sp.getBoolean("askedCorePerms", false)
         set(v) = sp.edit().putBoolean("askedCorePerms", v).apply()

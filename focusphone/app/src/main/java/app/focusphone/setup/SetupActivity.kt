@@ -14,7 +14,9 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.view.Gravity
 import android.view.View
+import android.text.InputType
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
@@ -44,6 +46,8 @@ class SetupActivity : Activity() {
     private lateinit var scheduleList: LinearLayout
     private lateinit var permList: LinearLayout
     private lateinit var kioskInfo: TextView
+    private lateinit var breakPinStatus: TextView
+    private lateinit var btnBreakPin: Button
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = render()
@@ -79,6 +83,12 @@ class SetupActivity : Activity() {
         scheduleList = bind<LinearLayout>(R.id.scheduleList)
         permList = bind<LinearLayout>(R.id.permList)
         kioskInfo = bind<TextView>(R.id.kioskInfo)
+        breakPinStatus = bind<TextView>(R.id.breakPinStatus)
+        btnBreakPin = bind<Button>(R.id.btnBreakPin)
+        btnBreakPin.setOnClickListener { breakPinFlow() }
+        bind<Button>(R.id.btnSecuritySettings).setOnClickListener {
+            safeStart(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+        }
 
         btnStartNow.setOnClickListener { askStartNow() }
         btnOpenPhone.setOnClickListener {
@@ -94,12 +104,14 @@ class SetupActivity : Activity() {
             }
         }
         btnEndSession.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle("End focus session?")
-                .setMessage("The phone stays normal until the next scheduled window.")
-                .setPositiveButton("End") { _, _ -> FocusScheduler.endSession(this) }
-                .setNegativeButton("Cancel", null)
-                .show()
+            requirePin {
+                AlertDialog.Builder(this)
+                    .setTitle("End focus session?")
+                    .setMessage("The phone stays normal until the next scheduled window.")
+                    .setPositiveButton("End") { _, _ -> FocusScheduler.endSession(this) }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
         }
         bind<Button>(R.id.btnAddSchedule).setOnClickListener { addScheduleFlow() }
 
@@ -169,6 +181,8 @@ class SetupActivity : Activity() {
         btnOpenPhone.visibility = if (active) View.VISIBLE else View.GONE
         btnEndSession.visibility = if (active) View.VISIBLE else View.GONE
         btnOpenPhone.text = if (prefs.isOnBreak(now)) "Resume focus now" else "Return to focus phone"
+        breakPinStatus.text = if (prefs.hasBreakPin) "Set · asked before a break or ending a session" else "Off · Break works without a PIN"
+        btnBreakPin.text = if (prefs.hasBreakPin) "Change" else "Set"
         renderSchedules()
         renderPermissions()
     }
@@ -360,6 +374,60 @@ class SetupActivity : Activity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    // ------------------------------------------------------------ break PIN
+
+    private fun pinField(): EditText = EditText(this).apply {
+        inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        hint = "4–8 digits"
+        val p = dp(20)
+        setPadding(p, p, p, p)
+    }
+
+    /** Runs [action] immediately, or after the current Break PIN has been entered. */
+    private fun requirePin(action: () -> Unit) {
+        if (!prefs.hasBreakPin) {
+            action()
+            return
+        }
+        val field = pinField()
+        AlertDialog.Builder(this)
+            .setTitle("Enter Break PIN")
+            .setView(field)
+            .setPositiveButton("OK") { _, _ ->
+                if (prefs.pinLockedForSeconds() > 0) {
+                    Toast.makeText(this, "Too many tries, wait ${prefs.pinLockedForSeconds()} s", Toast.LENGTH_SHORT).show()
+                } else if (prefs.checkBreakPin(field.text.toString())) {
+                    action()
+                } else {
+                    Toast.makeText(this, "Wrong PIN", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun breakPinFlow() {
+        requirePin {
+            val field = pinField()
+            val b = AlertDialog.Builder(this)
+                .setTitle(if (prefs.hasBreakPin) "New Break PIN" else "Set Break PIN")
+                .setMessage("Asked on the feature phone before a break and before ending a session.")
+                .setView(field)
+                .setPositiveButton("Save") { _, _ ->
+                    val pin = field.text.toString()
+                    if (pin.length !in 4..8 || !pin.all { it.isDigit() }) {
+                        Toast.makeText(this, "Use 4 to 8 digits", Toast.LENGTH_SHORT).show()
+                    } else {
+                        prefs.setBreakPin(pin)
+                        render()
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+            if (prefs.hasBreakPin) b.setNeutralButton("Remove PIN") { _, _ -> prefs.setBreakPin(null); render() }
+            b.show()
+        }
     }
 
     private fun pickTime(title: String, h: Int, m: Int, onPicked: (Int, Int) -> Unit) {

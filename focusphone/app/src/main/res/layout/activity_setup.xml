@@ -116,6 +116,16 @@
                 android:layout_marginTop="12dp"
                 android:fontFamily="monospace"
                 android:textIsSelectable="true" />
+
+            <TextView
+                style="@style/SetupHint"
+                android:layout_marginTop="12dp"
+                android:text="Leaving a pinned app makes Android ask for your screen lock (PIN / pattern / password) when the system setting 'Ask for PIN before unpinning' is on. The app cannot change that setting. Turn it off under Settings → Security → App pinning if you do not want it, or make the app device owner (no lock prompt at all)." />
+
+            <Button
+                android:id="@+id/btnSecuritySettings"
+                style="@style/SetupButtonOutline"
+                android:text="Open security settings" />
         </LinearLayout>
 
         <!-- Options -->
@@ -141,6 +151,41 @@
                 android:id="@+id/swTones"
                 style="@style/SetupSwitch"
                 android:text="Keypad tones" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Break PIN"
+                        android:textColor="@color/setup_text"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/breakPinStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/setup_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btnBreakPin"
+                    style="@style/SetupSmallButton"
+                    android:layout_marginStart="12dp"
+                    android:text="Set" />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView

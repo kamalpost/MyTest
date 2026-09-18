@@ -22,17 +22,26 @@ class BreakScreen(host: ScreenHost) : ListScreen(host, digitShortcuts = true) {
         when {
             index < options.size -> {
                 val minutes = options[index].first
+                guarded {
+                    host.push(
+                        ConfirmScreen(
+                            host, "Take a break?",
+                            "Leave the focus phone for $minutes minutes?\n\nYour normal phone comes back. Focus mode resumes automatically afterwards."
+                        ) { ctx.takeBreak(minutes) }
+                    )
+                }
+            }
+            index == options.size -> guarded {
                 host.push(
-                    ConfirmScreen(
-                        host, "Take a break?",
-                        "Leave the focus phone for $minutes minutes?\n\nYour normal phone comes back. Focus mode resumes automatically afterwards."
-                    ) { ctx.takeBreak(minutes) }
+                    ConfirmScreen(host, "End session?", "End this focus session now and return to your normal phone?") { ctx.endSession() }
                 )
             }
-            index == options.size -> host.push(
-                ConfirmScreen(host, "End session?", "End this focus session now and return to your normal phone?") { ctx.endSession() }
-            )
             else -> host.pop()
         }
+    }
+
+    /** Runs [action] directly, or after the Break PIN when one is set. */
+    private fun guarded(action: () -> Unit) {
+        if (ctx.prefs.hasBreakPin) host.push(PinScreen(host, action)) else action()
     }
 }
