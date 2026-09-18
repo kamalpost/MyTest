@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bezel"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/phone_body"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="14dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:letterSpacing="0.3"
+            android:text="@string/phone_brand"
+            android:textColor="#8A8A96"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="64dp"
+            android:layout_height="5dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="6dp"
+            android:background="#101014" />
+
+        <FrameLayout
+            android:id="@+id/lcdFrame"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="44"
+            android:background="@drawable/lcd_frame"
+            android:padding="10dp">
+
+            <LinearLayout
+                android:id="@+id/lcd"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/lcd_paper"
+                android:orientation="vertical"
+                android:padding="6dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/signal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:text="▂▄▆"
+                        android:textColor="@color/lcd_ink"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/title"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:fontFamily="monospace"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:textColor="@color/lcd_ink"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/battery"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:text="▮▮▮"
+                        android:textColor="@color/lcd_ink"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp"
+                    android:background="@color/lcd_ink" />
+
+                <FrameLayout
+                    android:id="@+id/screenContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/leftSoft"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="monospace"
+                        android:gravity="start"
+                        android:textColor="@color/lcd_ink"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/rightSoft"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:textColor="@color/lcd_ink"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/keypad"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="10dp"
+            android:layout_weight="56"
+            android:orientation="vertical" />
+    </LinearLayout>
+</LinearLayout>

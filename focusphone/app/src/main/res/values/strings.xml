@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FocusPhone</string>
+    <string name="phone_brand">FOCUS 3310</string>
+    <string name="notif_channel_focus">Focus session</string>
+    <string name="notif_channel_alerts">Focus alerts</string>
+</resources>

@@ -1,0 +1,85 @@
+package app.focusphone.phone
+
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.provider.Telephony
+import android.telephony.SmsManager
+import app.focusphone.data.Prefs
+
+data class SmsMessage(val address: String, val body: String, val date: Long, val outgoing: Boolean)
+data class SmsThread(val address: String, val last: SmsMessage, val count: Int)
+
+/** Reads the SMS inbox and sends texts. Sent messages are mirrored in Prefs. */
+class SmsRepo(private val ctx: Context) {
+    private val prefs = Prefs(ctx)
+
+    fun canRead(): Boolean =
+        ctx.checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+
+    fun canSend(): Boolean =
+        ctx.checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
+
+    fun allMessages(): List<SmsMessage> {
+        val out = ArrayList<SmsMessage>()
+        if (canRead()) {
+            val proj = arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.TYPE)
+            try {
+                ctx.contentResolver.query(Telephony.Sms.CONTENT_URI, proj, null, null, Telephony.Sms.DATE + " DESC LIMIT 500")
+                    ?.use { c ->
+                        while (c.moveToNext()) {
+                            val addr = c.getString(0) ?: continue
+                            val body = c.getString(1) ?: ""
+                            val date = c.getLong(2)
+                            val type = c.getInt(3)
+                            out.add(SmsMessage(addr, body, date, type != Telephony.Sms.MESSAGE_TYPE_INBOX))
+                        }
+                    }
+            } catch (e: Exception) {
+                // Some OEM providers reject LIMIT in the sort order; fall back to no limit.
+                ctx.contentResolver.query(Telephony.Sms.CONTENT_URI, proj, null, null, Telephony.Sms.DATE + " DESC")
+                    ?.use { c ->
+                        var n = 0
+                        while (c.moveToNext() && n++ < 500) {
+                            val addr = c.getString(0) ?: continue
+                            out.add(SmsMessage(addr, c.getString(1) ?: "", c.getLong(2), c.getInt(3) != Telephony.Sms.MESSAGE_TYPE_INBOX))
+                        }
+                    }
+            }
+        }
+        prefs.sentMessages.forEach { out.add(SmsMessage(it.address, it.body, it.date, true)) }
+        return out.sortedByDescending { it.date }
+    }
+
+    fun threads(): List<SmsThread> {
+        val byAddr = LinkedHashMap<String, MutableList<SmsMessage>>()
+        for (m in allMessages()) {
+            byAddr.getOrPut(ContactsRepo.normalize(m.address)) { ArrayList() }.add(m)
+        }
+        return byAddr.values.map { list -> SmsThread(list.first().address, list.first(), list.size) }
+            .sortedByDescending { it.last.date }
+    }
+
+    fun conversation(address: String): List<SmsMessage> {
+        val key = ContactsRepo.normalize(address)
+        return allMessages().filter { ContactsRepo.normalize(it.address) == key }.sortedBy { it.date }
+    }
+
+    /** Returns null on success, otherwise an error message. */
+    fun send(address: String, body: String): String? {
+        if (!canSend()) return "No SMS permission"
+        if (address.isBlank() || body.isBlank()) return "Nothing to send"
+        return try {
+            @Suppress("DEPRECATION")
+            val sm: SmsManager = (if (android.os.Build.VERSION.SDK_INT >= 31)
+                ctx.getSystemService(SmsManager::class.java) else null) ?: SmsManager.getDefault()
+            val parts = sm.divideMessage(body)
+            if (parts.size <= 1) sm.sendTextMessage(address, null, body, null, null)
+            else sm.sendMultipartTextMessage(address, null, parts, null, null)
+            prefs.addSentMessage(address, body)
+            null
+        } catch (e: Exception) {
+            e.message ?: "Send failed"
+        }
+    }
+}

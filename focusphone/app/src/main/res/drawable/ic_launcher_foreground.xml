@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- feature phone body -->
+    <path android:fillColor="#2A2A30"
+        android:pathData="M38,22 h32 a6,6 0 0 1 6,6 v52 a6,6 0 0 1 -6,6 h-32 a6,6 0 0 1 -6,-6 v-52 a6,6 0 0 1 6,-6 z" />
+    <!-- lcd -->
+    <path android:fillColor="#A8BE86"
+        android:pathData="M39,29 h30 v22 h-30 z" />
+    <!-- keys -->
+    <path android:fillColor="#F2F2F2"
+        android:pathData="M40,56 h7 v4 h-7 z M50.5,56 h7 v4 h-7 z M61,56 h7 v4 h-7 z M40,63 h7 v4 h-7 z M50.5,63 h7 v4 h-7 z M61,63 h7 v4 h-7 z M40,70 h7 v4 h-7 z M50.5,70 h7 v4 h-7 z M61,70 h7 v4 h-7 z M40,77 h7 v4 h-7 z M50.5,77 h7 v4 h-7 z M61,77 h7 v4 h-7 z" />
+    <!-- antenna -->
+    <path android:fillColor="#2A2A30"
+        android:pathData="M62,14 h4 v9 h-4 z" />
+</vector>

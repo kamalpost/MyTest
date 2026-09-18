@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="lcd_paper">#A8BE86</color>
+    <color name="lcd_ink">#1B2A14</color>
+    <color name="bezel">#1E1E22</color>
+    <color name="body">#2A2A30</color>
+    <color name="key">#3B3B44</color>
+    <color name="key_pressed">#55556A</color>
+    <color name="key_text">#F2F2F2</color>
+    <color name="key_sub">#9FB4FF</color>
+    <color name="key_call">#2E7D32</color>
+    <color name="key_end">#C62828</color>
+    <color name="icon_bg">#1B2A14</color>
+
+    <color name="setup_bg">#F4F5F7</color>
+    <color name="setup_card">#FFFFFF</color>
+    <color name="setup_text">#1A1C1E</color>
+    <color name="setup_muted">#5F6368</color>
+    <color name="setup_accent">#2E7D32</color>
+    <color name="setup_warn">#C62828</color>
+</resources>

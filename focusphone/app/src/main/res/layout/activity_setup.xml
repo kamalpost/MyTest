@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/setup_bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textColor="@color/setup_text"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Turn your smartphone into a feature phone during scheduled focus time."
+            android:textColor="@color/setup_muted"
+            android:textSize="14sp" />
+
+        <!-- Status -->
+        <LinearLayout
+            style="@style/SetupCard"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/setup_text"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/statusDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/setup_muted"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnStartNow"
+                style="@style/SetupButton"
+                android:text="Start focus now" />
+
+            <Button
+                android:id="@+id/btnOpenPhone"
+                style="@style/SetupButton"
+                android:text="Return to focus phone" />
+
+            <Button
+                android:id="@+id/btnEndSession"
+                style="@style/SetupButtonOutline"
+                android:text="End focus session" />
+        </LinearLayout>
+
+        <!-- Schedules -->
+        <LinearLayout
+            style="@style/SetupCard"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/SetupHeading"
+                android:text="Scheduled focus time" />
+
+            <TextView
+                style="@style/SetupHint"
+                android:text="At the start of each window the feature phone takes over the screen. It hands the phone back when the window ends, or earlier if you press Break." />
+
+            <LinearLayout
+                android:id="@+id/scheduleList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical" />
+
+            <Button
+                android:id="@+id/btnAddSchedule"
+                style="@style/SetupButtonOutline"
+                android:text="＋ Add schedule" />
+        </LinearLayout>
+
+        <!-- Protection -->
+        <LinearLayout
+            style="@style/SetupCard"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/SetupHeading"
+                android:text="Blocking strength" />
+
+            <TextView
+                style="@style/SetupHint"
+                android:text="Grant these so other apps and their pop-ups stay out of the way during focus time." />
+
+            <LinearLayout
+                android:id="@+id/permList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/kioskInfo"
+                style="@style/SetupHint"
+                android:layout_marginTop="12dp"
+                android:fontFamily="monospace"
+                android:textIsSelectable="true" />
+        </LinearLayout>
+
+        <!-- Options -->
+        <LinearLayout
+            style="@style/SetupCard"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/SetupHeading"
+                android:text="Options" />
+
+            <Switch
+                android:id="@+id/swKiosk"
+                style="@style/SetupSwitch"
+                android:text="Pin the screen (kiosk mode)" />
+
+            <Switch
+                android:id="@+id/swDnd"
+                style="@style/SetupSwitch"
+                android:text="Silence notifications (calls still ring)" />
+
+            <Switch
+                android:id="@+id/swTones"
+                style="@style/SetupSwitch"
+                android:text="Keypad tones" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/SetupHint"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="24dp"
+            android:text="During focus time you get: calls, SMS with T9 typing, contacts, clock, calculator and Snake. Nothing else. The Break key on the phone's home screen brings your smartphone back for 5–60 minutes, or ends the session." />
+    </LinearLayout>
+</ScrollView>
