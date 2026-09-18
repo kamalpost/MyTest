@@ -104,9 +104,4 @@ class Prefs(context: Context) {
     fun addSentMessage(address: String, body: String) {
         sentMessages = sentMessages + SentSms(address, body, System.currentTimeMillis())
     }
-
-    // ---- snake high score, because it is a feature phone ----
-    var snakeHighScore: Int
-        get() = sp.getInt("snakeHigh", 0)
-        set(v) = sp.edit().putInt("snakeHigh", v).apply()
 }

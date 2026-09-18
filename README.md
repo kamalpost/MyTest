@@ -3,7 +3,7 @@
 Two independent Android apps live in this repository:
 
 * **[focusphone/](focusphone/README.md)** — **FocusPhone**: turns the smartphone into a
-  feature phone (LCD, keypad, T9 texting, calls, Snake) during scheduled focus time, blocks
+  feature phone (LCD, keypad, calls and T9 texting only) during scheduled focus time, blocks
   other apps and pop-ups via kiosk mode + Do Not Disturb, and has a **Break** key to get the
   smartphone back. Native Kotlin, built by `.github/workflows/focusphone-apk.yml`.
 * **VoxReader** (below) — PDF/Word audiobook reader (Capacitor), in `www/` and `android/`.

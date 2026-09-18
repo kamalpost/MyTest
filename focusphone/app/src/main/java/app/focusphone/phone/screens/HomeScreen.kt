@@ -61,8 +61,7 @@ class HomeScreen(host: ScreenHost) : Screen(host) {
             Key.SOFT_RIGHT -> host.push(BreakScreen(host))
             Key.CALL -> host.push(DialerScreen(host))
             Key.UP, Key.DOWN -> host.push(ContactsScreen(host))
-            Key.LEFT -> host.push(MessagesScreen(host))
-            Key.RIGHT -> host.push(ClockScreen(host))
+            Key.LEFT, Key.RIGHT -> host.push(MessagesScreen(host))
             Key.END -> {}
             else -> if (key.isDialChar) host.push(DialerScreen(host, key.char.toString()))
         }

@@ -2,8 +2,9 @@
 
 An Android app that turns your smartphone into an **old-school feature phone during
 scheduled focus time**. When a focus window starts, a monochrome-LCD "Nokia-style" phone
-takes over the screen and stays there: no other apps, no pop-ups, no notification shade.
-A **Break** key hands the smartphone back for a few minutes (or ends the session).
+takes over the screen and stays there: **calls and text messages only**, no other apps,
+no pop-ups, no notification shade. A **Break** key hands the smartphone back for a few
+minutes (or ends the session).
 
 ```
  ┌───────────────────────┐
@@ -33,9 +34,6 @@ A **Break** key hands the smartphone back for a few minutes (or ends the session
 | **Phone** | Dialer with keypad tones, name lookup as you type, `*` twice for `+`. Calls go through the real dialer. |
 | **Messages** | Inbox grouped by sender, conversation view, reply / new message with genuine **multi-tap T9 typing** (`#` toggles Abc/ABC/abc/123, `0` = space, `*` = symbols). |
 | **Contacts** | Address book with T9 filtering (type `5 6` to find "John", "Kim"…). Call or text a contact. |
-| **Clock** | Big clock, focus countdown, stopwatch. |
-| **Calculator** | Four-function: `*` cycles + − × ÷, `#` is the decimal point, OK is `=`. |
-| **Snake** | Of course. Arrows or 2/4/6/8. High score is kept. |
 | **Break** | Right soft key on the home screen: 5 / 15 / 30 / 60 minute break (smartphone comes back, focus resumes automatically) or *End focus session*. |
 
 Physical/Bluetooth keyboards work too (digits, `*`, `#`, arrows, Enter, Backspace, Call/End keys).
@@ -105,6 +103,6 @@ app/src/main/java/app/focusphone/
   phone/FeaturePhoneActivity.kt the pinned feature phone: LCD + keypad + actions
   phone/ScreenHost.kt         navigation stack for LCD screens
   phone/MultiTap.kt           T9 multi-tap text entry
-  phone/screens/*.kt          Home, Menu, Dialer, Contacts, Messages, Clock, Calculator, Snake, Break, About
+  phone/screens/*.kt          Home, Menu, Dialer, Contacts, Messages, Break
   setup/SetupActivity.kt      smartphone-style schedule / permissions / options screen
 ```

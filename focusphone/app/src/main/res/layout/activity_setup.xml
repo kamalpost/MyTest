@@ -147,6 +147,6 @@
             style="@style/SetupHint"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="24dp"
-            android:text="During focus time you get: calls, SMS with T9 typing, contacts, clock, calculator and Snake. Nothing else. The Break key on the phone's home screen brings your smartphone back for 5–60 minutes, or ends the session." />
+            android:text="During focus time you get: calls, SMS with T9 typing and your contacts. Nothing else. The Break key on the phone's home screen brings your smartphone back for 5–60 minutes, or ends the session." />
     </LinearLayout>
 </ScrollView>
