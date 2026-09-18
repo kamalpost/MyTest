@@ -186,12 +186,10 @@ class ComposeScreen(host: ScreenHost, presetAddress: String?) : Screen(host) {
         ctx.ensureSmsPermission {
             val err = ctx.sms.send(address.toString(), text)
             if (err == null) {
-                host.push(InfoScreen(host, "Sent", { "Message sent to\n${ctx.contacts.nameFor(address.toString()) ?: address}" }) {
-                    // Drop the "Sent" screen and this composer: land on whatever opened it
-                    // (the conversation, the Messages menu or a contact) with fresh data.
-                    host.pop()
-                    host.pop()
-                })
+                // Back to whatever opened the composer (conversation, Messages menu or a
+                // contact); the real result arrives as an LCD toast from the network.
+                host.pop()
+                ctx.lcdToast("Sending…")
             } else {
                 ctx.lcdToast("Failed: $err")
             }

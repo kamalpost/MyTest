@@ -57,6 +57,10 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("keyTones", true)
         set(v) = sp.edit().putBoolean("keyTones", v).apply()
 
+    var askedCorePermissions: Boolean
+        get() = sp.getBoolean("askedCorePerms", false)
+        set(v) = sp.edit().putBoolean("askedCorePerms", v).apply()
+
     // ---- DND state saved so it can be restored ----
     var dndApplied: Boolean
         get() = sp.getBoolean("dndApplied", false)

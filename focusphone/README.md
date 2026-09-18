@@ -31,7 +31,7 @@ minutes (or ends the session).
 
 | Feature phone "app" | What it does |
 |---|---|
-| **Phone** | Dialer with keypad tones, name lookup as you type, `*` twice for `+`. Calls go through the real dialer. |
+| **Phone** | Dialer with keypad tones, name lookup as you type, `*` twice for `+`. **Incoming calls** ring on the LCD with caller name: 📞 / OK answers, ⏻ rejects; during a call the right soft key hangs up and the left toggles speaker. |
 | **Messages** | Inbox grouped by sender, conversation view, reply / new message with genuine **multi-tap T9 typing** (`#` toggles Abc/ABC/abc/123, `0` = space, `*` = symbols). |
 | **Contacts** | Address book with T9 filtering (type `5 6` to find "John", "Kim"…). Call or text a contact. |
 | **Break** | Right soft key on the home screen: 5 / 15 / 30 / 60 minute break (smartphone comes back, focus resumes automatically) or *End focus session*. |
@@ -58,6 +58,11 @@ Physical/Bluetooth keyboards work too (digits, `*`, `#`, arrows, Enter, Backspac
    or you unpinned it), it brings the phone back — directly when *Display over other apps*
    is granted, otherwise via a full-screen alert.
 4. **Exact alarms + boot receiver.** Sessions start and stop on the minute and survive reboots.
+5. **Calls always win.** Screen pinning normally hides the system's incoming-call screen, so the
+   app tracks the phone state itself: when a call rings it unpins, shows its own call screen
+   (answer / reject / hang up via Telecom), pauses the watchdog, and pins again once the line is idle.
+   Texts are sent on an explicitly chosen SIM (dual-SIM phones without a default SMS SIM would
+   otherwise show a chooser that kiosk mode blocks) and the LCD reports the real send result.
 
 ## Setup screen (the normal smartphone UI)
 
@@ -66,6 +71,9 @@ Open the app outside focus time to get the setup screen:
 * **Start focus now** — 25 min to 4 h, immediately.
 * **Scheduled focus time** — add windows: days of the week + start + end (overnight
   windows such as 22:00–02:00 are fine). Toggle or delete each one.
+* On first launch the app asks for the phone / SMS / contacts permissions right away (permission
+  prompts cannot be relied on once the feature phone is pinned), and again before *Start focus now*
+  if any are still missing.
 * **Blocking strength** — a checklist with *Grant* buttons: notifications, phone/SMS/contacts,
   Do Not Disturb access, display over other apps, exact alarms, battery optimisation, plus
   the device-owner command above.
@@ -100,9 +108,11 @@ app/src/main/java/app/focusphone/
   focus/FocusModeController.kt lock task (kiosk) + Do Not Disturb on/off
   focus/FocusAdminReceiver.kt device-admin hook for device-owner kiosk
   focus/SmsReceiver.kt        unread-message counter
+  focus/SmsSentReceiver.kt    real "sent / failed" result of an outgoing text
+  focus/CallStateReceiver.kt  ringing / off-hook / idle tracking (feeds phone/CallState.kt)
   phone/FeaturePhoneActivity.kt the pinned feature phone: LCD + keypad + actions
   phone/ScreenHost.kt         navigation stack for LCD screens
   phone/MultiTap.kt           T9 multi-tap text entry
-  phone/screens/*.kt          Home, Menu, Dialer, Contacts, Messages, Break
+  phone/screens/*.kt          Home, Menu, Dialer, Contacts, Messages, Call, Break
   setup/SetupActivity.kt      smartphone-style schedule / permissions / options screen
 ```

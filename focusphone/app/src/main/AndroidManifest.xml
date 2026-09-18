@@ -5,6 +5,9 @@
     <!-- Feature-phone functions -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
@@ -87,6 +90,20 @@
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>
         </receiver>
+
+        <!-- Ringing / off-hook / idle so the feature phone can answer and hang up itself. -->
+        <receiver
+            android:name=".focus.CallStateReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Target of the SmsManager "sent" PendingIntent. -->
+        <receiver
+            android:name=".focus.SmsSentReceiver"
+            android:exported="false" />
 
         <!-- Device admin so the app can be made device owner (adb) for a tamper-proof kiosk. -->
         <receiver

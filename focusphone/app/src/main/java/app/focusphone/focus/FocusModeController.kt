@@ -105,16 +105,14 @@ object FocusModeController {
                 prefs.savedPolicyVisualEffects = it.suppressedVisualEffects
             }
             // Priority mode that still lets phone calls through: a feature phone rings.
-            // Everything else is silenced and hidden (no peeking heads-ups, no badges).
+            // Everything else is silenced; heads-ups are already hidden by lock task mode.
             nm.notificationPolicy = NotificationManager.Policy(
                 NotificationManager.Policy.PRIORITY_CATEGORY_CALLS or
                     NotificationManager.Policy.PRIORITY_CATEGORY_REPEAT_CALLERS,
                 NotificationManager.Policy.PRIORITY_SENDERS_ANY,
                 NotificationManager.Policy.PRIORITY_SENDERS_ANY,
-                NotificationManager.Policy.SUPPRESSED_EFFECT_PEEK or
-                    NotificationManager.Policy.SUPPRESSED_EFFECT_BADGE or
-                    NotificationManager.Policy.SUPPRESSED_EFFECT_LIGHTS or
-                    NotificationManager.Policy.SUPPRESSED_EFFECT_FULL_SCREEN_INTENT
+                NotificationManager.Policy.SUPPRESSED_EFFECT_BADGE or
+                    NotificationManager.Policy.SUPPRESSED_EFFECT_LIGHTS
             )
             nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
             prefs.dndApplied = true

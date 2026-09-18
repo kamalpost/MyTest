@@ -31,6 +31,8 @@ import app.focusphone.focus.FocusModeController
 import app.focusphone.focus.FocusScheduler
 import app.focusphone.focus.FocusService
 import app.focusphone.focus.SmsReceiver
+import app.focusphone.focus.SmsSentReceiver
+import app.focusphone.phone.screens.CallScreen
 import app.focusphone.phone.screens.HomeScreen
 import app.focusphone.setup.SetupActivity
 
@@ -74,6 +76,8 @@ class FeaturePhoneActivity : Activity() {
         }
     }
 
+    private val callReceiver = app.focusphone.focus.CallStateReceiver()
+
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -87,6 +91,14 @@ class FeaturePhoneActivity : Activity() {
                     beep(ToneGenerator.TONE_PROP_BEEP2)
                     host.current.refresh()
                 }
+                SmsSentReceiver.ACTION_RESULT -> {
+                    val ok = intent.getBooleanExtra(SmsSentReceiver.EXTRA_OK, false)
+                    val reason = intent.getStringExtra(SmsSentReceiver.EXTRA_REASON) ?: ""
+                    lcdToast(if (ok) "Message sent" else "Send failed: $reason", 2500)
+                    if (!ok) beep(ToneGenerator.TONE_PROP_NACK)
+                    host.current.refresh()
+                }
+                CallState.ACTION_CHANGED -> onCallStateChanged()
             }
         }
     }
@@ -119,9 +131,15 @@ class FeaturePhoneActivity : Activity() {
         val f = IntentFilter().apply {
             addAction(FocusScheduler.ACTION_STATE_CHANGED)
             addAction(SmsReceiver.ACTION_NEW_SMS)
+            addAction(SmsSentReceiver.ACTION_RESULT)
+            addAction(CallState.ACTION_CHANGED)
         }
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, f, Context.RECEIVER_NOT_EXPORTED)
         else registerReceiver(receiver, f)
+        // Also listen directly: the manifest receiver may lag while the process is cold.
+        val pf = IntentFilter(android.telephony.TelephonyManager.ACTION_PHONE_STATE_CHANGED)
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(callReceiver, pf, Context.RECEIVER_EXPORTED)
+        else registerReceiver(callReceiver, pf)
     }
 
     override fun onResume() {
@@ -132,8 +150,13 @@ class FeaturePhoneActivity : Activity() {
             leaveFocus()
             return
         }
-        FocusModeController.enter(this)
+        if (CallState.isInCall(this)) {
+            FocusModeController.suspendForCall(this)
+        } else {
+            FocusModeController.enter(this)
+        }
         FocusService.sync(this)
+        onCallStateChanged()
         try {
             toneGen = ToneGenerator(AudioManager.STREAM_SYSTEM, 40)
         } catch (e: Exception) {
@@ -155,10 +178,12 @@ class FeaturePhoneActivity : Activity() {
 
     override fun onStop() {
         if (::host.isInitialized) {
-            try {
-                unregisterReceiver(receiver)
-            } catch (e: IllegalArgumentException) {
-                // not registered
+            for (r in listOf(receiver, callReceiver)) {
+                try {
+                    unregisterReceiver(r)
+                } catch (e: IllegalArgumentException) {
+                    // not registered
+                }
             }
         }
         super.onStop()
@@ -288,6 +313,28 @@ class FeaturePhoneActivity : Activity() {
         handler.postDelayed({ screenContainer.removeView(tv) }, ms)
     }
 
+    /**
+     * A call started ringing, got answered, or ended. The feature phone unpins so the
+     * system call UI can appear as a fallback, shows its own call screen, and pins again
+     * once the line is idle.
+     */
+    private fun onCallStateChanged() {
+        if (!::host.isInitialized) return
+        if (!CallState.isIdle) {
+            FocusModeController.suspendForCall(this)
+            if (host.current is CallScreen) {
+                host.current.refresh()
+                host.refreshChrome()
+            } else {
+                if (CallState.isRinging) beep(ToneGenerator.TONE_SUP_RINGTONE, 600)
+                host.push(CallScreen(host))
+            }
+        } else {
+            if (host.current is CallScreen) host.pop()
+            if (prefs.isFocusActive() && isInForeground) FocusModeController.enter(this)
+        }
+    }
+
     fun placeCall(number: String) {
         val n = number.trim()
         if (n.isEmpty()) return
@@ -297,6 +344,7 @@ class FeaturePhoneActivity : Activity() {
             return
         }
         lcdToast("Calling $n")
+        CallState.number = n
         FocusModeController.suspendForCall(this)
         try {
             startActivity(Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(n))))
@@ -337,7 +385,7 @@ class FeaturePhoneActivity : Activity() {
             REQ_SMS, REQ_CONTACTS -> {
                 val cb = pendingAfterPermission
                 pendingAfterPermission = null
-                if (granted) cb?.invoke() else lcdToast("Permission denied")
+                if (granted) cb?.invoke() else lcdToast("Allow it in FocusPhone setup (take a break)", 3000)
                 if (::host.isInitialized) host.current.refresh()
             }
         }

@@ -30,6 +30,11 @@ import app.focusphone.phone.FeaturePhoneActivity
 
 /** The normal smartphone-style screen: schedules, permissions, options and "start now". */
 class SetupActivity : Activity() {
+    companion object {
+        private const val REQ_CORE = 1
+        private const val REQ_START = 2
+    }
+
     private lateinit var prefs: Prefs
     private lateinit var status: TextView
     private lateinit var statusDetail: TextView
@@ -43,6 +48,23 @@ class SetupActivity : Activity() {
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = render()
     }
+
+    private var pendingStartMinutes = 0
+
+    private val corePermissions: List<String> = buildList {
+        add(Manifest.permission.CALL_PHONE)
+        add(Manifest.permission.READ_PHONE_STATE)
+        add(Manifest.permission.ANSWER_PHONE_CALLS)
+        add(Manifest.permission.READ_CALL_LOG)
+        add(Manifest.permission.SEND_SMS)
+        add(Manifest.permission.READ_SMS)
+        add(Manifest.permission.RECEIVE_SMS)
+        add(Manifest.permission.READ_CONTACTS)
+        if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun missingCorePermissions(): Array<String> =
+        corePermissions.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }.toTypedArray()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,11 +108,12 @@ class SetupActivity : Activity() {
         bindSwitch(R.id.swTones, prefs.keyTones) { prefs.keyTones = it }
 
         FocusScheduler.reschedule(this)
-        // First launch on Android 13+: ask for notifications so the "return to focus" alert can show.
-        if (Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+        // Ask for the phone / SMS / contacts permissions up front: permission prompts are
+        // unreliable once the feature phone is pinned in kiosk mode.
+        val missing = missingCorePermissions()
+        if (missing.isNotEmpty() && !prefs.askedCorePermissions) {
+            prefs.askedCorePermissions = true
+            requestPermissions(missing, REQ_CORE)
         }
     }
 
@@ -114,6 +137,14 @@ class SetupActivity : Activity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         render()
+        if (requestCode == REQ_START && pendingStartMinutes > 0) {
+            val m = pendingStartMinutes
+            pendingStartMinutes = 0
+            if (missingCorePermissions().any { it != Manifest.permission.POST_NOTIFICATIONS }) {
+                Toast.makeText(this, "Calls or texts may not work until the permissions are granted.", Toast.LENGTH_LONG).show()
+            }
+            launchFocus(m)
+        }
     }
 
     private fun bindSwitch(id: Int, initial: Boolean, onChange: (Boolean) -> Unit) {
@@ -201,21 +232,18 @@ class SetupActivity : Activity() {
     private fun renderPermissions() {
         permList.removeAllViews()
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-        val runtime = listOf(
-            Manifest.permission.CALL_PHONE, Manifest.permission.SEND_SMS, Manifest.permission.READ_SMS,
-            Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_CONTACTS
-        )
+        val runtime = corePermissions.filter { it != Manifest.permission.POST_NOTIFICATIONS }
         val rows = ArrayList<PermRow>()
         if (Build.VERSION.SDK_INT >= 33) {
             rows.add(PermRow(
                 "Notifications", "Shows the 'return to focus' alert when the phone is left.",
                 checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            ) { requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1) })
+            ) { requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_CORE) })
         }
         rows.add(PermRow(
-            "Phone, SMS & contacts", "Lets the feature phone call, text and look up names.",
+            "Phone, SMS & contacts", "Answer and make calls, send and read texts, look up names.",
             runtime.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
-        ) { requestPermissions(runtime.toTypedArray(), 2) })
+        ) { requestPermissions(runtime.toTypedArray(), REQ_CORE) })
         rows.add(PermRow(
             "Do Not Disturb access", "Silences every notification pop-up while phone calls still ring.",
             FocusModeController.hasDndAccess(this)
@@ -292,6 +320,16 @@ class SetupActivity : Activity() {
     }
 
     private fun startNow(minutes: Int) {
+        val missing = missingCorePermissions()
+        if (missing.isNotEmpty()) {
+            pendingStartMinutes = minutes
+            requestPermissions(missing, REQ_START)
+            return
+        }
+        launchFocus(minutes)
+    }
+
+    private fun launchFocus(minutes: Int) {
         if (prefs.kioskEnabled && !FocusModeController.isDeviceOwner(this)) {
             Toast.makeText(this, "Android will ask to pin the screen — choose OK / Got it.", Toast.LENGTH_LONG).show()
         }

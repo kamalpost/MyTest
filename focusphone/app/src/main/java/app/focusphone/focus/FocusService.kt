@@ -11,10 +11,13 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import android.content.IntentFilter
 import android.os.Looper
+import android.telephony.TelephonyManager
 import android.util.Log
 import app.focusphone.R
 import app.focusphone.data.Prefs
+import app.focusphone.phone.CallState
 import app.focusphone.phone.FeaturePhoneActivity
 
 /**
@@ -61,6 +64,7 @@ class FocusService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var lastAlertAt = 0L
+    private val callReceiver = CallStateReceiver()
 
     private val watchdog = object : Runnable {
         override fun run() {
@@ -71,7 +75,10 @@ class FocusService : Service() {
                 return
             }
             updateNotification()
-            if (prefs.isFocusActive() && !FeaturePhoneActivity.isInForeground) {
+            // Never pull the feature phone over a ringing or active call.
+            if (prefs.isFocusActive() && !FeaturePhoneActivity.isInForeground &&
+                !CallState.isInCall(this@FocusService)
+            ) {
                 bringPhoneBack()
             }
             handler.postDelayed(this, WATCHDOG_MS)
@@ -81,6 +88,9 @@ class FocusService : Service() {
     override fun onCreate() {
         super.onCreate()
         ensureChannels(this)
+        val f = IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED)
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(callReceiver, f, Context.RECEIVER_EXPORTED)
+        else registerReceiver(callReceiver, f)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -97,6 +107,11 @@ class FocusService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacks(watchdog)
+        try {
+            unregisterReceiver(callReceiver)
+        } catch (e: IllegalArgumentException) {
+            // not registered
+        }
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.cancel(ALERT_ID)
         super.onDestroy()
