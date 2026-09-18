@@ -55,6 +55,7 @@ class FeaturePhoneActivity : Activity() {
         private set
     val contacts by lazy { ContactsRepo(this) }
     val sms by lazy { SmsRepo(this) }
+    val callLog by lazy { CallLogRepo(this) }
 
     private lateinit var screenContainer: FrameLayout
     private lateinit var batteryView: TextView
@@ -237,7 +238,7 @@ class FeaturePhoneActivity : Activity() {
         val rows: List<List<Triple<String, String?, Key>>> = listOf(
             listOf(Triple("—", null, Key.SOFT_LEFT), Triple("▲", null, Key.UP), Triple("—", null, Key.SOFT_RIGHT)),
             listOf(Triple("◀", null, Key.LEFT), Triple("OK", null, Key.OK), Triple("▶", null, Key.RIGHT)),
-            listOf(Triple("📞", null, Key.CALL), Triple("▼", null, Key.DOWN), Triple("⏻", null, Key.END)),
+            listOf(Triple("📞", null, Key.CALL), Triple("▼", null, Key.DOWN), Triple("End", null, Key.END)),
             listOf(Triple("1", ".,?!", Key.D1), Triple("2", "ABC", Key.D2), Triple("3", "DEF", Key.D3)),
             listOf(Triple("4", "GHI", Key.D4), Triple("5", "JKL", Key.D5), Triple("6", "MNO", Key.D6)),
             listOf(Triple("7", "PQRS", Key.D7), Triple("8", "TUV", Key.D8), Triple("9", "WXYZ", Key.D9)),

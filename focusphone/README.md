@@ -31,9 +31,9 @@ minutes (or ends the session).
 
 | Feature phone "app" | What it does |
 |---|---|
-| **Phone** | Dialer with keypad tones, name lookup as you type, `*` twice for `+`. **Incoming calls** ring on the LCD with caller name: 📞 / OK answers, ⏻ rejects; during a call the right soft key hangs up and the left toggles speaker. |
+| **Phone** | The green key opens **Recent calls** (call log with name, ↙ ↗ ✗ direction and time; 📞 calls, ▶ opens the entry). Menu → Phone adds **Favourites** (starred contacts), Contacts and a dialer with keypad tones, name lookup as you type and `*` twice for `+`. **Incoming calls** ring on the LCD with caller name: 📞 / OK answers, ⏻ rejects; during a call the right soft key hangs up and the left toggles speaker. |
 | **Messages** | Inbox grouped by sender, conversation view, reply / new message with genuine **multi-tap T9 typing** (`#` toggles Abc/ABC/abc/123, `0` = space, `*` = symbols). |
-| **Contacts** | Address book with T9 filtering (type `5 6` to find "John", "Kim"…). Call or text a contact. |
+| **Contacts** | Address book with T9 filtering (type `5 6` to find "John", "Kim"…), real names first and number-only entries last. Call or text a contact. |
 | **Break** | Right soft key on the home screen: 5 / 15 / 30 / 60 minute break (smartphone comes back, focus resumes automatically) or *End focus session*. |
 
 Physical/Bluetooth keyboards work too (digits, `*`, `#`, arrows, Enter, Backspace, Call/End keys).
@@ -124,6 +124,6 @@ app/src/main/java/app/focusphone/
   phone/FeaturePhoneActivity.kt the pinned feature phone: LCD + keypad + actions
   phone/ScreenHost.kt         navigation stack for LCD screens
   phone/MultiTap.kt           T9 multi-tap text entry
-  phone/screens/*.kt          Home, Menu, Dialer, Contacts, Messages, Call, Break, Pin
+  phone/screens/*.kt          Home, Menu, Phone menu / Recent calls / Favourites, Dialer, Contacts, Messages, Call, Break, Pin
   setup/SetupActivity.kt      smartphone-style schedule / permissions / options screen
 ```

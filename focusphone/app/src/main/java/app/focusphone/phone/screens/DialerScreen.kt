@@ -25,7 +25,7 @@ class DialerScreen(host: ScreenHost, initial: String = "") : Screen(host) {
         col.addView(numberView)
         col.addView(nameView)
         col.addView(Lcd.spacer(ctx))
-        col.addView(Lcd.text(ctx, "Enter number, press 📞", 12f, center = true))
+        col.addView(Lcd.text(ctx, "Type a number · ▲▼ contacts", 12f, center = true))
         return col
     }
 

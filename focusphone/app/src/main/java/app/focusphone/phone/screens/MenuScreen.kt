@@ -11,7 +11,7 @@ class MenuScreen(host: ScreenHost) : ListScreen(host, digitShortcuts = true) {
 
     override fun onSelect(index: Int) {
         when (index) {
-            0 -> host.push(DialerScreen(host))
+            0 -> host.push(PhoneMenuScreen(host))
             1 -> host.push(MessagesScreen(host))
             2 -> host.push(ContactsScreen(host))
         }

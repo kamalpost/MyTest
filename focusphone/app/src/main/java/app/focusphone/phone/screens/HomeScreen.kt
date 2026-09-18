@@ -59,7 +59,7 @@ class HomeScreen(host: ScreenHost) : Screen(host) {
         when (key) {
             Key.SOFT_LEFT, Key.OK -> host.push(MenuScreen(host))
             Key.SOFT_RIGHT -> host.push(BreakScreen(host))
-            Key.CALL -> host.push(DialerScreen(host))
+            Key.CALL -> host.push(RecentCallsScreen(host))
             Key.UP, Key.DOWN -> host.push(ContactsScreen(host))
             Key.LEFT, Key.RIGHT -> host.push(MessagesScreen(host))
             Key.END -> {}
