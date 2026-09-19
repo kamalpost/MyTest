@@ -47,6 +47,8 @@ class SetupActivity : Activity() {
     private lateinit var permList: LinearLayout
     private lateinit var kioskInfo: TextView
     private lateinit var breakPinStatus: TextView
+    private lateinit var autoReturnWarning: TextView
+    private lateinit var btnAutoReturn: Button
     private lateinit var btnBreakPin: Button
 
     private val receiver = object : BroadcastReceiver() {
@@ -84,6 +86,9 @@ class SetupActivity : Activity() {
         permList = bind<LinearLayout>(R.id.permList)
         kioskInfo = bind<TextView>(R.id.kioskInfo)
         breakPinStatus = bind<TextView>(R.id.breakPinStatus)
+        autoReturnWarning = bind<TextView>(R.id.autoReturnWarning)
+        btnAutoReturn = bind<Button>(R.id.btnAutoReturn)
+        btnAutoReturn.setOnClickListener { safeStart(FocusModeController.overlaySettingsIntent(this)) }
         btnBreakPin = bind<Button>(R.id.btnBreakPin)
         btnBreakPin.setOnClickListener { breakPinFlow() }
         bind<Button>(R.id.btnSecuritySettings).setOnClickListener {
@@ -177,6 +182,9 @@ class SetupActivity : Activity() {
             prefs.schedules.none { it.enabled } -> "Add a schedule below or start a session right away."
             else -> "The feature phone will take over automatically."
         }
+        val auto = FocusModeController.canReturnAutomatically(this)
+        autoReturnWarning.visibility = if (auto) View.GONE else View.VISIBLE
+        btnAutoReturn.visibility = if (auto) View.GONE else View.VISIBLE
         btnStartNow.visibility = if (active) View.GONE else View.VISIBLE
         btnOpenPhone.visibility = if (active) View.VISIBLE else View.GONE
         btnEndSession.visibility = if (active) View.VISIBLE else View.GONE
@@ -263,8 +271,8 @@ class SetupActivity : Activity() {
             FocusModeController.hasDndAccess(this)
         ) { safeStart(FocusModeController.dndSettingsIntent()) })
         rows.add(PermRow(
-            "Display over other apps", "Lets focus mode bring the feature phone back on top automatically.",
-            FocusModeController.hasOverlayPermission(this)
+            "Display over other apps", "REQUIRED for focus to come back by itself after a break or at a scheduled start.",
+            FocusModeController.canReturnAutomatically(this)
         ) { safeStart(FocusModeController.overlaySettingsIntent(this)) })
         if (Build.VERSION.SDK_INT >= 31) {
             rows.add(PermRow(
@@ -340,7 +348,28 @@ class SetupActivity : Activity() {
             requestPermissions(missing, REQ_START)
             return
         }
-        launchFocus(minutes)
+        insistOnAutoReturn { launchFocus(minutes) }
+    }
+
+    /**
+     * Without "Display over other apps" the feature phone cannot come back on its own after a
+     * break, so explain and offer the settings page before continuing.
+     */
+    private fun insistOnAutoReturn(then: () -> Unit) {
+        if (FocusModeController.canReturnAutomatically(this)) {
+            then()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Allow “Display over other apps”")
+            .setMessage(
+                "Android blocks apps in the background from opening a screen, so after a break " +
+                    "(or at a scheduled start) FocusPhone could only send you a notification.\n\n" +
+                    "Allow “Display over other apps” for FocusPhone and it will take over the screen by itself."
+            )
+            .setPositiveButton("Allow now") { _, _ -> safeStart(FocusModeController.overlaySettingsIntent(this)) }
+            .setNegativeButton("Continue anyway") { _, _ -> then() }
+            .show()
     }
 
     private fun launchFocus(minutes: Int) {
@@ -369,6 +398,7 @@ class SetupActivity : Activity() {
                         prefs.schedules = prefs.schedules + s
                         FocusScheduler.reschedule(this)
                         render()
+                        insistOnAutoReturn { }
                     }
                 }
             }

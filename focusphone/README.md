@@ -54,9 +54,13 @@ Physical/Bluetooth keyboards work too (digits, `*`, `#`, arrows, Enter, Backspac
    priority mode that silences and hides every notification but still lets phone calls ring.
    Your previous DND settings are restored when focus ends.
 3. **Watchdog service.** A foreground service runs for the whole session. If focus is active
-   but the feature phone is not on screen (session started while you were in another app,
-   or you unpinned it), it brings the phone back — directly when *Display over other apps*
-   is granted, otherwise via a full-screen alert.
+   but the feature phone is not on screen (a break just ended, a session started while you
+   were in another app, or you unpinned it), it brings the phone back.
+   **This needs the *Display over other apps* permission**: Android blocks apps in the
+   background from opening a screen, and that permission (or device-owner mode) is what lifts
+   the block. Without it the app can only post a "tap to return" notification, which opens the
+   phone by itself only when the screen is off or locked. The setup screen warns about this,
+   asks before *Start focus now* and after adding a schedule, and the checklist marks it as required.
 4. **Exact alarms + boot receiver.** Sessions start and stop on the minute and survive reboots.
 5. **Calls always win.** Screen pinning normally hides the system's incoming-call screen, so the
    app tracks the phone state itself: when a call rings it unpins, shows its own call screen

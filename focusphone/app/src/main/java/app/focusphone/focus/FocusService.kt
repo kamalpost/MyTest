@@ -158,10 +158,15 @@ class FocusService : Service() {
         if (now - lastAlertAt < 15_000) return
         lastAlertAt = now
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val auto = FocusModeController.canReturnAutomatically(this)
         val n = Notification.Builder(this, CHANNEL_ALERTS)
             .setSmallIcon(R.drawable.ic_stat_focus)
-            .setContentTitle("Focus time")
-            .setContentText("Tap to return to your focus phone")
+            .setContentTitle(if (auto) "Focus time" else "Focus time · tap to return")
+            .setContentText(
+                if (auto) "Returning to your focus phone…"
+                else "Allow \"Display over other apps\" in FocusPhone setup to return automatically"
+            )
+            .setStyle(Notification.BigTextStyle())
             .setCategory(Notification.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setContentIntent(phoneIntent())

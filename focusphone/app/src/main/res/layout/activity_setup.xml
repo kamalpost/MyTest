@@ -48,6 +48,18 @@
                 android:textColor="@color/setup_muted"
                 android:textSize="13sp" />
 
+            <TextView
+                android:id="@+id/autoReturnWarning"
+                style="@style/SetupHint"
+                android:layout_marginTop="10dp"
+                android:textColor="@color/setup_warn"
+                android:text="⚠ Focus cannot come back by itself after a break: Android blocks apps in the background from opening a screen. Allow “Display over other apps” to fix this." />
+
+            <Button
+                android:id="@+id/btnAutoReturn"
+                style="@style/SetupButtonOutline"
+                android:text="Allow “Display over other apps”" />
+
             <Button
                 android:id="@+id/btnStartNow"
                 style="@style/SetupButton"

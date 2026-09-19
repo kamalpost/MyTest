@@ -34,6 +34,13 @@ object FocusModeController {
 
     fun hasOverlayPermission(ctx: Context): Boolean = Settings.canDrawOverlays(ctx)
 
+    /**
+     * Android blocks apps from opening a screen while they are in the background, which is
+     * exactly what "focus resumes after the break" needs. "Display over other apps" (or being
+     * device owner) is what lifts that block.
+     */
+    fun canReturnAutomatically(ctx: Context): Boolean = hasOverlayPermission(ctx) || isDeviceOwner(ctx)
+
     fun isLockTaskActive(ctx: Context): Boolean {
         val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         return am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
